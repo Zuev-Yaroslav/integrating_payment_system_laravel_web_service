@@ -1,9 +1,15 @@
 import { createInertiaApp } from '@inertiajs/vue3';
+import axios from 'axios';
+import { route } from 'ziggy-js';
 import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
+
+
+// window.axios = axios;
+// window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -24,6 +30,7 @@ createInertiaApp({
     progress: {
         color: '#4B5563',
     },
+
 });
 
 // This will set light / dark mode on page load...

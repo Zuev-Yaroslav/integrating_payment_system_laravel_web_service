@@ -1,6 +1,5 @@
 {
     "agents": [
-        "cursor",
         "copilot"
     ],
     "mcp": true,

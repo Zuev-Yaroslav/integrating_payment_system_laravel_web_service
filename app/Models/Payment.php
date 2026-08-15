@@ -10,4 +10,17 @@ class Payment extends Model
 {
     /** @use HasFactory<\Database\Factories\PaymentFactory> */
     use HasFactory, HasUlids;
+
+    protected $fillable = [
+        'order_id',
+        'gateway_payment_id',
+        'status',
+        'payment_method',
+        'error_message',
+    ];
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
 }
