@@ -73,7 +73,6 @@ const isLoading = computed(() => loadingPlanId.value !== null);
                 </div>
             </div>
         </div>
-{{route('dashboard')}}
         <!-- Main Content -->
         <div class="max-w-6xl mx-auto">
             <!-- Header -->

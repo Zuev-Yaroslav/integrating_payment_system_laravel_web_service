@@ -7,8 +7,8 @@ defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Dashboard',
-                href: dashboard(),
+                title: 'Billing',
+                href: route('billing.index'),
             },
         ],
     },

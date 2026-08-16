@@ -52,10 +52,10 @@ class PaymentService
                 'value' => $amount,
                 'currency' => 'RUB',
             ],
-            'confirmation' => array(
+            'confirmation' => [
                 'type' => 'redirect',
-                'return_url' => route('payment.callback'),
-            ),
+                'return_url' => route('billing.index'),
+            ],
             'capture' => false,
             'metadata' => [
                 'transaction_id' => $options['transaction_id'],

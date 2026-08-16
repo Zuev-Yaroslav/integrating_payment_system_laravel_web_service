@@ -55,8 +55,8 @@ const activeItemStyles =
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
-        href: dashboard(),
+        title: 'Billing',
+        href: route('billing.index'),
         icon: LayoutGrid,
     },
 ];
@@ -146,7 +146,7 @@ const rightNavItems: NavItem[] = [
                     </Sheet>
                 </div>
 
-                <Link :href="dashboard()" class="flex items-center gap-x-2">
+                <Link :href="route('billing.index')" class="flex items-center gap-x-2">
                     <AppLogo />
                 </Link>
 
