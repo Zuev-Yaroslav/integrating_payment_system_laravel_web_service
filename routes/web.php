@@ -9,7 +9,7 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 //    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
-
+ 
     // Billing routes
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/initiate', [BillingController::class, 'initiate'])->name('payment.initiate');

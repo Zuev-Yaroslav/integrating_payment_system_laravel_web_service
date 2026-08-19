@@ -47,7 +47,7 @@ const handleSelectPlan = async (planId: string) => {
             window.location.href = data.redirect_url;
         }
     } catch (error) {
-        console.error('Payment initiation error:', error);
+        console.error('Transaction initiation error:', error);
         loadingPlanId.value = null;
     }
 };

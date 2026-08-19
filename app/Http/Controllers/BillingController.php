@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Payment;
+use App\Models\Transaction;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,45 +20,7 @@ class BillingController extends Controller
      */
     public function index(): Response
     {
-        $plans = [
-            [
-                'id' => 'basic',
-                'name' => 'Базовый',
-                'price' => 990,
-                'currency' => 'RUB',
-                'features' => [
-                    'До 100 API запросов в месяц',
-                    'Базовая поддержка',
-                    'История последних 30 дней',
-                ],
-            ],
-            [
-                'id' => 'pro',
-                'name' => 'Про',
-                'price' => 2990,
-                'currency' => 'RUB',
-                'features' => [
-                    'До 10,000 API запросов в месяц',
-                    'Приоритетная поддержка',
-                    'История последних 90 дней',
-                    'Расширенная аналитика',
-                ],
-                'recommended' => true,
-            ],
-            [
-                'id' => 'business',
-                'name' => 'Бизнес',
-                'price' => 9990,
-                'currency' => 'RUB',
-                'features' => [
-                    'Неограниченные API запросы',
-                    'Круглосуточная поддержка',
-                    'Полная история',
-                    'Расширенная аналитика',
-                    'Выделенный аккаунт-менеджер',
-                ],
-            ],
-        ];
+        $plans = config('plans');
 
         return Inertia::render('Billing/Index', [
             'plans' => $plans,
@@ -74,26 +36,13 @@ class BillingController extends Controller
             'plan_id' => 'required|string|in:basic,pro,business',
         ]);
 
-        $planPrices = [
-            'basic' => 990,
-            'pro' => 2990,
-            'business' => 9990,
-        ];
-
-        $planNames = [
-            'basic' => 'Тариф "Базовый"',
-            'pro' => 'Тариф "Про"',
-            'business' => 'Тариф "Бизнес"',
-        ];
-
         $planId = $validated['plan_id'];
-        $amount = $planPrices[$planId];
-        $description = $planNames[$planId];
 
+        $plan = config('plans.' . $planId);
         try {
             $confirmationUrl = $this->orderService->store([
-                'amount' => $amount,
-                'description' => $description,
+                'amount' => $plan['price'],
+                'description' => $plan['name'],
             ]);
 
             return response()->json([

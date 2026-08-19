@@ -1,16 +1,16 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import axios from 'axios';
-import { route, ZiggyVue } from 'ziggy-js';
+import { createApp, h } from 'vue';
+import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
-import { createApp, h } from 'vue';
 
 
-// window.axios = axios;
-// window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -45,3 +45,8 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+if (typeof window !== 'undefined') {
+    window.axios = axios;
+    window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+}

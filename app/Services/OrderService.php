@@ -18,13 +18,15 @@ class OrderService
         try {
             $data['user_id'] = auth()->id();
             $order = Order::create($data);
-            $payment = $order->payment()->create();
-            $link = $this->paymentService->createPayment($data['amount'], $data['description'], [
-                'transaction_id' => $payment->id,
+            $transaction = $order->transaction()->create();
+            $payment = $this->paymentService->createPayment($data['amount'], $data['description'], [
+                'transaction_id' => $transaction->id,
             ]);
+            $transaction->gateway_payment_id = $payment->id;
+            $transaction->save();
             DB::commit();
 
-            return $link;
+            return $payment->getConfirmation()->getConfirmationUrl();
 
         } catch (\Exception $e) {
             DB::rollBack();

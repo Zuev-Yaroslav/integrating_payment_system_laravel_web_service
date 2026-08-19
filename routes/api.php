@@ -9,5 +9,5 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::match(['get', 'post'], '/payments/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
-// Payment status check API
+// Transaction status check API
 Route::get('/orders/{orderId}/status', [BillingController::class, 'checkStatus']);

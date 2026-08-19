@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\TransactionStatusEnum;
+use App\Models\Transaction;
+use Illuminate\Notifications\Events\NotificationFailed;
 use YooKassa\Client;
 use YooKassa\Common\Exceptions\ApiConnectionException;
 use YooKassa\Common\Exceptions\ApiException;
@@ -14,6 +17,11 @@ use YooKassa\Common\Exceptions\NotFoundException;
 use YooKassa\Common\Exceptions\ResponseProcessingException;
 use YooKassa\Common\Exceptions\TooManyRequestsException;
 use YooKassa\Common\Exceptions\UnauthorizedException;
+use YooKassa\Model\Notification\NotificationEventType;
+use YooKassa\Model\Notification\NotificationSucceeded;
+use YooKassa\Model\Notification\NotificationWaitingForCapture;
+use YooKassa\Model\Payment\PaymentStatus;
+use YooKassa\Request\Payments\CreatePaymentResponse;
 
 class PaymentService
 {
@@ -44,10 +52,10 @@ class PaymentService
      * @throws TooManyRequestsException
      * @throws UnauthorizedException
      */
-    public function createPayment(float $amount, string $description, array $options): string
+    public function createPayment(float $amount, string $description, array $options): CreatePaymentResponse
     {
         $client = $this->getClient();
-        $payment = $client->createPayment([
+        return $client->createPayment([
             'amount' => [
                 'value' => $amount,
                 'currency' => 'RUB',
@@ -62,7 +70,30 @@ class PaymentService
             ],
             'description' => $description,
         ], uniqid('', true));
+    }
 
-        return $payment->getConfirmation()->getConfirmationUrl();
+    public function callback(array $data): void
+    {
+        $notification = ($data['event'] === NotificationEventType::PAYMENT_SUCCEEDED)
+            ? new NotificationSucceeded($data)
+            : new NotificationWaitingForCapture($data);
+        $payment = $notification->getObject();
+
+        if (isset($payment->status) && $payment->status === PaymentStatus::WAITING_FOR_CAPTURE) {
+            $this->getClient()->capturePayment([
+                'amount' => $payment->amount,
+            ], $payment->id, uniqid('', true));
+        }
+
+        if (isset($payment->status) && $payment->status === PaymentStatus::SUCCEEDED) {
+            if ($payment->paid === true) {
+                $metadata = $payment->metadata;
+                if (isset($metadata->transaction_id)) {
+                    $transaction = Transaction::find($metadata->transaction_id);
+                    $transaction->status = PaymentStatus::SUCCEEDED;
+                    $transaction->save();
+                }
+            }
+        }
     }
 }

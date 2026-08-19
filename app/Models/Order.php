@@ -20,8 +20,8 @@ class Order extends Model
         'amount',
     ];
 
-    public function payment()
+    public function transaction()
     {
-        return $this->hasOne(Payment::class);
+        return $this->hasOne(Transaction::class);
     }
 }
