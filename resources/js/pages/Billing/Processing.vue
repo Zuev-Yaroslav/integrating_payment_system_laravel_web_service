@@ -2,12 +2,13 @@
 import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 interface Props {
     orderId?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const checkInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const isChecking = ref(true);
@@ -16,39 +17,47 @@ const maxErrorRetries = 30; // 60 секунд с интервалом 2 сек�
 
 const checkPaymentStatus = async (orderId: string) => {
     try {
-        const response = await axios.get(`/api/v1/orders/${orderId}/status`);
+
+
+        const response = await axios.get(`/orders/${orderId}/status`);
         const { status, error } = response.data;
 
-        if (status === 'completed') {
+        if (status === 'succeeded') {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
-            router.visit('/billing/success?order_id=' + orderId);
-        } else if (status === 'failed') {
+            router.visit('/billing/success/' + encodeURIComponent(orderId));
+        } else if (status === 'canceled') {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
-            router.visit('/billing/failed?error=' + encodeURIComponent(error || 'Неизвестная ошибка'));
+            router.visit(
+                '/billing/failed?error=' +
+                    encodeURIComponent(error || 'Неизвестная ошибка'),
+            );
+        } else if (errorCount.value >= maxErrorRetries && status === 'pending') {
+            clearInterval(checkInterval.value!);
+            router.visit(route('billing.index'));
         }
 
         // Сброс счетчика ошибок при успешном запросе
-        errorCount.value = 0;
-    } catch (error) {
+        // errorCount.value = 0;
         errorCount.value++;
+    } catch (error) {
 
         // Если слишком много ошибок, редирект на страницу ошибки
         if (errorCount.value >= maxErrorRetries) {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
-            router.visit('/billing/failed?error=' + encodeURIComponent('Время ожидания истекло'));
+            router.visit(
+                '/billing/failed?error=' +
+                    encodeURIComponent('Время ожидания истекло'),
+            );
         }
     }
 };
 
 onMounted(() => {
     // Начальная проверка сразу при монтировании
-    // Получаем orderId из текущего URL или из props
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('orderId');
-    console.log(orderId);
+    const orderId = props.orderId;
 
     if (orderId) {
         checkPaymentStatus(orderId);
@@ -70,40 +79,65 @@ onUnmounted(() => {
 <template>
     <Head title="Обработка платежа" />
 
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center px-4">
+    <div
+        class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4 dark:from-slate-950 dark:to-slate-900"
+    >
         <div class="text-center">
             <!-- Animated Spinner -->
             <div class="mb-8 flex justify-center">
                 <div
                     :class="[
-                        'relative w-20 h-20 rounded-full border-4 border-slate-200 dark:border-slate-700',
-                        isChecking && 'border-t-blue-600 border-r-blue-600 animate-spin',
+                        'relative h-20 w-20 rounded-full border-4 border-slate-200 dark:border-slate-700',
+                        isChecking &&
+                            'animate-spin border-t-blue-600 border-r-blue-600',
                     ]"
                 >
                     <!-- Inner animated ring -->
                     <div
                         v-if="isChecking"
-                        class="absolute inset-0 rounded-full border-4 border-transparent border-b-blue-400 animate-pulse"
+                        class="absolute inset-0 animate-pulse rounded-full border-4 border-transparent border-b-blue-400"
                     ></div>
                 </div>
             </div>
 
             <!-- Main Text -->
-            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+            <h1
+                class="mb-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white"
+            >
                 Проверяем статус платежа...
             </h1>
 
             <!-- Subtitle -->
-            <p class="text-lg text-slate-600 dark:text-slate-400 mb-8">
+            <p class="mb-8 text-lg text-slate-600 dark:text-slate-400">
                 Пожалуйста, не закрывайте вкладку
             </p>
 
             <!-- Status Info -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 max-w-sm mx-auto">
-                <div class="flex items-center justify-center gap-3 text-slate-600 dark:text-slate-400">
-                    <svg class="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <div
+                class="mx-auto max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-slate-800"
+            >
+                <div
+                    class="flex items-center justify-center gap-3 text-slate-600 dark:text-slate-400"
+                >
+                    <svg
+                        class="h-5 w-5 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                     </svg>
                     <span class="text-sm font-medium">
                         Попытка {{ errorCount + 1 }} из {{ maxErrorRetries }}
@@ -112,9 +146,12 @@ onUnmounted(() => {
             </div>
 
             <!-- Help Text -->
-            <p class="text-sm text-slate-500 dark:text-slate-500 mt-8">
+            <p class="mt-8 text-sm text-slate-500 dark:text-slate-500">
                 Если страница не обновится в течение минуты,
-                <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">
+                <a
+                    href="#"
+                    class="text-blue-600 hover:underline dark:text-blue-400"
+                >
                     свяжитесь с поддержкой
                 </a>
             </p>

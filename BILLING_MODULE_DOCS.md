@@ -78,8 +78,8 @@
 ```
 GET  /billing/                    → billing.index        (выбор тарифа)
 POST /billing/initiate             → payment.initiate     (инициация платежа)
-GET  /billing/processing           → billing.processing   (обработка)
-GET  /billing/success              → billing.success      (успех)
+GET  /billing/processing/{orderId} → billing.processing   (обработка)
+GET  /billing/success/{orderId}    → billing.success      (успех)
 GET  /billing/failed               → billing.failed       (ошибка)
 GET  /api/v1/orders/{id}/status    → billing.checkStatus  (API проверки)
 ```
