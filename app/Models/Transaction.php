@@ -6,6 +6,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $id
+ * @property string order_id
+ * @property string gateway_payment_id
+ * @property string status
+ * @property string payment_method
+ * @property string error_message
+ * @property string created_at
+ * @property string updated_at
+ */
+
 class Transaction extends Model
 {
     /** @use HasFactory<\Database\Factories\TransactionFactory> */

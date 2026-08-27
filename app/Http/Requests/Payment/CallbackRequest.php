@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Payment;
 
+use App\Services\Payments\PaymentGatewayFactory;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,7 +13,7 @@ class CallbackRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return PaymentGatewayFactory::make()->validateWebhook($this);
     }
 
     /**

@@ -12,6 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  *
  * @property string $id
  * @property string $description
+ * @property string currency
+ * @property float amount
+ * @property string updated_at
+ * @property string created_at
+ * @property string status
+ * @property int user_id
  * @property-read Transaction|null $transaction
  */
 class Order extends Model

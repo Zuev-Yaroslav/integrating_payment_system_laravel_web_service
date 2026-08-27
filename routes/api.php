@@ -8,5 +8,5 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::match(['get', 'post'], '/payments/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
+Route::post('/payments/callback', [\App\Http\Controllers\PaymentWebhookController::class, 'callback'])->name('payment.callback');
 

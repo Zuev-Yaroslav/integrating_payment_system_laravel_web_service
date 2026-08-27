@@ -17,8 +17,6 @@ const maxErrorRetries = 30; // 60 секунд с интервалом 2 сек�
 
 const checkPaymentStatus = async (orderId: string) => {
     try {
-
-
         const response = await axios.get(`/orders/${orderId}/status`);
         const { status, error } = response.data;
 

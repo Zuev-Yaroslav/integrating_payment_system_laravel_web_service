@@ -77,7 +77,7 @@ onMounted(() => {
                 </div>
 
                 <Link
-                    href="/dashboard"
+                    href="/billing"
                     class="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-full"
                 >
                     <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Transaction;
+use App\Services\Payments\PaymentGatewayFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -16,17 +18,19 @@ class OrderService
         try {
             $data['user_id'] = auth()->id();
             $order = Order::create($data);
+            /** @var Transaction $transaction */
             $transaction = $order->transaction()->create();
-            $payment = $this->paymentService->createPayment($data['amount'], $data['description'], [
+
+            $gateway = PaymentGatewayFactory::make();
+
+            $link = $gateway->createPayment($order, $transaction, [
                 'transaction_id' => $transaction->id,
                 'return_url' => route('billing.processing', ['orderId' => $order->id]),
             ]);
-            Log::info('payment', [$payment]);
-            $transaction->gateway_payment_id = $payment->id;
-            $transaction->save();
+
             DB::commit();
 
-            return $payment->getConfirmation()->getConfirmationUrl();
+            return $link;
 
         } catch (\Exception $e) {
             DB::rollBack();
