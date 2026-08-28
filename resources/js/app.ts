@@ -1,12 +1,11 @@
 import { createInertiaApp } from '@inertiajs/vue3';
-import axios from 'axios';
-import { createApp, h } from 'vue';
-import { ZiggyVue } from 'ziggy-js';
-import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { initializeTheme } from '@/composables/useAppearance';
 import { initializeFlashToast } from '@/lib/flashToast';
+import { ZiggyVue } from 'ziggy-js';
+import { Ziggy } from '@/ziggy';
 
 
 
@@ -15,13 +14,10 @@ import { initializeFlashToast } from '@/lib/flashToast';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
-    setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+    withApp(app) {
+        app.use(ZiggyVue, Ziggy)
     },
+    title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
@@ -40,13 +36,5 @@ createInertiaApp({
 
 });
 
-// This will set light / dark mode on page load...
 initializeTheme();
-
-// This will listen for flash toast data from the server...
 initializeFlashToast();
-
-if (typeof window !== 'undefined') {
-    window.axios = axios;
-    window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-}

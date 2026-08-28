@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->foreignId('order_id')->index()->constrained('orders')->cascadeOnDelete();
+            $table->foreignUlid('order_id')->index()->constrained('orders')->cascadeOnDelete();
             $table->string('gateway_payment_id')->nullable()->unique();
             $table->string('status')->default(PaymentStatus::PENDING);
             $table->string('payment_method')->nullable(); // bank_card, sbp, yoomoney
