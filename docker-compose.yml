@@ -29,7 +29,7 @@ services:
       - payment_network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.payment-app.rule=Host(`150.241.64.249.sslip.io`)"
+      - "traefik.http.routers.payment-app.rule=Host(`${IP}.sslip.io`)"
       - "traefik.http.routers.payment-app.entrypoints=websecure"
       - "traefik.http.routers.payment-app.tls=true"
       - "traefik.http.routers.payment-app.tls.certresolver=myresolver"
@@ -62,17 +62,17 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       # Открываем порты для HTTP и HTTPS
-      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.address=:${NGINX_PORT}"
       - "--entrypoints.websecure.address=:443"
       # Настройка автоматического редиректа с HTTP на HTTPS
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       # Конфигурация Let's Encrypt (ACME)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=your-email@example.com" # Укажи свой email
+      - "--certificatesresolvers.myresolver.acme.email=${EMAIL}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "80:80"
+      - "${NGINX_POST}:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # Чтобы Traefik видел другие контейнеры
