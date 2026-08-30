@@ -27,14 +27,6 @@ services:
       - "5173:5173"
     networks:
       - payment_network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.payment-app.rule=Host(`${IP}.sslip.io`)"
-      - "traefik.http.routers.payment-app.entrypoints=websecure"
-      - "traefik.http.routers.payment-app.tls=true"
-      - "traefik.http.routers.payment-app.tls.certresolver=myresolver"
-      # Указываем порт, который слушает твой Nginx внутри контейнера (обычно 80)
-      - "traefik.http.services.payment-app.loadbalancer.server.port=${NGINX_PORT}"
 
   db:
     image: postgres:18
@@ -62,7 +54,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       # Открываем порты для HTTP и HTTPS
-      - "--entrypoints.web.address=:${NGINX_PORT}"
+      - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       # Настройка автоматического редиректа с HTTP на HTTPS
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
@@ -72,7 +64,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=${EMAIL}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "${NGINX_PORT}:80"
+      - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # Чтобы Traefik видел другие контейнеры
