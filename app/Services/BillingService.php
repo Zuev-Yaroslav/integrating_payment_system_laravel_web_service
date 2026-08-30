@@ -43,7 +43,7 @@ class BillingService
         $order = Order::query()
             ->whereKey($orderId)
             ->where('user_id', Auth::id())
-            ->first();
+            ->firstOrFail();
 
         if ($order->status !== OrderStatus::COMPLETED->value) {
             throw new HttpResponseException(redirect()->route('billing.processing', $order->id));
