@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import axios from 'axios';
 import { computed, ref } from 'vue';
 import TestCardInfo from '@/components/TestCardInfo.vue';
 import { route } from 'ziggy-js';
@@ -26,25 +27,21 @@ const handleSelectPlan = async (planId: string) => {
     loadingPlanId.value = planId;
 
     try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        const response = await fetch('/billing/initiate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
+        const response = await axios.post(
+            route('payment.initiate'),
+            { plan_id: planId },
+            {
+                withCredentials: true,
             },
-            body: JSON.stringify({ plan_id: planId }),
-        });
+        );
 
-        if (!response.ok) {
-            throw new Error('Failed to initiate payment');
-        }
-
-        const data = await response.json();
+        const { redirect_url: redirectUrl } = response.data;
 
         // Редирект на YooKassa
-        if (data.redirect_url) {
-            window.location.href = data.redirect_url;
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+        } else {
+            throw new Error('Payment redirect URL is missing');
         }
     } catch (error) {
         console.error('Transaction initiation error:', error);
