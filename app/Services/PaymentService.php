@@ -47,12 +47,13 @@ class PaymentService
             if ($paymentObject->paid === true) {
                 $metadata = $paymentObject->metadata;
                 if (isset($metadata->transaction_id)) {
-                    $transaction = Transaction::find($metadata->transaction_id);
-                    $transaction->status = PaymentStatus::SUCCEEDED;
-                    $transaction->order()->update([
-                        'status' => OrderStatus::COMPLETED,
+                    $transaction = Transaction::findOrFail($metadata->transaction_id);
+                    $transaction->update([
+                        'status' => PaymentStatus::SUCCEEDED,
                     ]);
-                    $transaction->save();
+                    $transaction->order()->update([
+                        'status' => OrderStatus::COMPLETED->value,
+                    ]);
                 }
             }
         }
