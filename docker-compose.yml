@@ -38,7 +38,7 @@ services:
     container_name: payment_system_app
     depends_on:
       - db
-      - redis
+      - redis_service
     ports:
       - "5173:5173"
     networks:
@@ -73,7 +73,7 @@ services:
       - .:/var/www
     depends_on:
       - db
-      - redis
+      - redis_service
     command: [ "/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf" ]
     container_name: payment_system_supervisor_worker
     networks:
