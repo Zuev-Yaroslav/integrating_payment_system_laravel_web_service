@@ -4,8 +4,10 @@ services:
     volumes:
       - ./:/var/www/
       - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
-      - "${NGINX_PORT}:80"
+      - "${NGINX_PORT}:${NGINX_PORT}"
+      - "80:80"
     depends_on:
       - app
     container_name: payment_system_nginx
@@ -46,31 +48,6 @@ services:
     container_name: payment_system_db
     networks:
       - payment_network
-  traefik:
-    image: traefik:v3.0
-    container_name: payment_system_traefik
-    restart: unless-stopped
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      # Открываем порты для HTTP и HTTPS
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # Настройка автоматического редиректа с HTTP на HTTPS
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      # Конфигурация Let's Encrypt (ACME)
-      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=${EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Чтобы Traefik видел другие контейнеры
-      - traefik_certs:/letsencrypt
-    networks:
-      - payment_network
 
   supervisor_worker:
     image: php-nodejs
@@ -108,7 +85,6 @@ services:
           - payment_system_redis
 
 volumes:
-  traefik_certs:
   payment_redis_data:
     driver: local
 
