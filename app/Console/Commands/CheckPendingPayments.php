@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Enums\OrderStatus;
+use App\Enums\Yookassa\CancelInitiator;
+use App\Enums\Yookassa\CancelReason;
 use App\Models\Transaction;
 use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\PaymentService;
@@ -34,18 +36,28 @@ class CheckPendingPayments extends Command
                 $yookassaPayment = $gateway->getClient()->getPaymentInfo($transaction->gateway_payment_id);
                 $actualStatus = $yookassaPayment->getStatus();
 
-                if ($actualStatus === 'canceled' || $actualStatus === 'succeeded') {
-                    $transaction->update(['status' => $actualStatus]);
+                if ($actualStatus === PaymentStatus::CANCELED || $actualStatus === PaymentStatus::SUCCEEDED) {
+                    $transaction->update([
+                        'status' => $actualStatus,
+                        'cancellation_details' => $yookassaPayment->cancellationDetails?->toArray(),
+                    ]);
                     $transaction->order->update([
                         'status' => $actualStatus === 'succeeded' ? OrderStatus::COMPLETED : OrderStatus::FAILED
                     ]);
                     continue;
                 }
 
-                if ($actualStatus === 'pending' && $transaction->created_at->addMinutes(10)->isPast()) {
+                if ($actualStatus === PaymentStatus::PENDING && $transaction->created_at->addMinutes(10)->isPast()
+                    && config('app.env') === 'local'
+                ) {
 
-                    // Локально переводим в статус отмены, защищая проект от "зависания"
-                    $transaction->update(['status' => PaymentStatus::CANCELED]);
+                    $transaction->update([
+                        'status' => PaymentStatus::CANCELED,
+                        'cancellation_details' => [
+                            'party' => CancelInitiator::YOO_MONEY->value,
+                            'reason' => CancelReason::EXPIRED_ON_CONFIRMATION->value,
+                        ]
+                    ]);
                     $transaction->order->update(['status' => OrderStatus::FAILED]);
 
                     Log::channel('payments')->info("Платеж {$transaction->id} принудительно отменен локально по таймауту Sandbox.");

@@ -32,3 +32,4 @@ yarn-error.log
 /public/ngrok.exe
 /supervisord.pid
 /payment_redis_data
+/tmp

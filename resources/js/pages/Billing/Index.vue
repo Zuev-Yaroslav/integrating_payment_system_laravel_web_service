@@ -4,6 +4,7 @@ import axios from 'axios';
 import { computed, ref } from 'vue';
 import TestCardInfo from '@/components/TestCardInfo.vue';
 import { route } from 'ziggy-js';
+import { toast } from 'vue-sonner';
 
 interface Plan {
     id: string;
@@ -16,6 +17,7 @@ interface Plan {
 
 interface Props {
     plans: Plan[];
+    error: string;
 }
 
 defineProps<Props>();
@@ -44,6 +46,7 @@ const handleSelectPlan = async (planId: string) => {
             throw new Error('Payment redirect URL is missing');
         }
     } catch (error) {
+        toast['error'](error.response?.data?.message || error.message);
         console.error('Transaction initiation error:', error);
         loadingPlanId.value = null;
     }

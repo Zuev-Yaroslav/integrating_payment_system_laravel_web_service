@@ -9,13 +9,12 @@ import { Ziggy } from '@/ziggy';
 
 
 
-
-
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     withApp(app) {
-        app.use(ZiggyVue, Ziggy)
+        app
+            .use(ZiggyVue, Ziggy)
     },
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {

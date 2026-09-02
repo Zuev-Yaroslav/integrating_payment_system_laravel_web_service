@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Exceptions\BillingException;
 use App\Models\Order;
+use Exception;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
 use YooKassa\Model\Payment\PaymentStatus;
@@ -50,7 +51,7 @@ class BillingService
         }
 
         return [
-            'order_id' => $orderId,
+            'order' => $order,
             'plan_name' => $order ? $this->planName($order->description) : 'выбранный тариф',
         ];
     }

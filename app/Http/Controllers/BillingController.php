@@ -17,10 +17,15 @@ class BillingController extends Controller
     /**
      * Страница выбора тарифа и инициации оплаты
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        if ($request->query('error')) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $request->query('error')]);
+        }
+
         return Inertia::render('Billing/Index', [
             'plans' => $this->billingService->plans(),
+//            'error' => $request->query('error'),
         ]);
     }
 

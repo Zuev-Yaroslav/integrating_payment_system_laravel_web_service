@@ -33,7 +33,9 @@ const checkPaymentStatus = async (orderId: string) => {
             );
         } else if (errorCount.value >= maxErrorRetries && status === 'pending') {
             clearInterval(checkInterval.value!);
-            router.visit(route('billing.index'));
+            router.visit(route('billing.index'), {
+                data: { error: 'Время ожидания оплаты истекло. Если вы закрыли страницу оплаты, попробуйте еще раз.' }
+            });
         }
 
         // Сброс счетчика ошибок при успешном запросе

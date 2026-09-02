@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
 
 interface Props {
-    order_id?: string;
+    order: Order;
     plan_name?: string;
 }
 
@@ -43,7 +43,10 @@ onMounted(() => {
 
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8">
                     <p class="text-lg text-slate-600 dark:text-slate-300 mb-4">
-                        Ваш баланс обновлен
+                        ID заказа: {{ order.id }}
+                    </p>
+                    <p class="text-lg text-slate-600 dark:text-slate-300 mb-4">
+                        Сумма: {{ order.amount }} {{ order.currency }}
                     </p>
                     <p v-if="plan_name" class="text-base font-semibold text-blue-600 dark:text-blue-400 mb-2">
                         Тариф "{{ plan_name }}" активирован
@@ -87,11 +90,11 @@ onMounted(() => {
                 </Link>
             </div>
 
-            <div :class="['mt-8 text-center transition-all duration-700 delay-500', isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0']">
-                <p class="text-sm text-slate-500 dark:text-slate-400">
-                    Квитанция отправлена на вашу электронную почту
-                </p>
-            </div>
+<!--            <div :class="['mt-8 text-center transition-all duration-700 delay-500', isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0']">-->
+<!--                <p class="text-sm text-slate-500 dark:text-slate-400">-->
+<!--                    Квитанция отправлена на вашу электронную почту-->
+<!--                </p>-->
+<!--            </div>-->
         </div>
     </div>
 </template>

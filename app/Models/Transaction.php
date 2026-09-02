@@ -24,12 +24,19 @@ class Transaction extends Model
     /** @use HasFactory<\Database\Factories\TransactionFactory> */
     use HasFactory, HasUlids;
 
+    protected function casts(): array
+    {
+        return [
+            'cancellation_details' => 'array',
+        ];
+    }
+
     protected $fillable = [
         'order_id',
         'gateway_payment_id',
         'status',
         'payment_method',
-        'error_message',
+        'cancellation_details',
     ];
 
     public function order()
