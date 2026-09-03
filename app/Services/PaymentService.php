@@ -42,9 +42,9 @@ class PaymentService
         $metadata = $paymentObject->metadata;
         $this->ifWaitingForCapture($paymentObject, $gateway);
 
-        $this->ifSucceeded($paymentObject);
+        $this->ifSucceeded($paymentObject, $metadata);
 
-        $this->ifCancelled($paymentObject);
+        $this->ifCancelled($paymentObject, $metadata);
     }
 
     private function ifSucceeded(PaymentInterface $paymentObject, Metadata $metadata)
