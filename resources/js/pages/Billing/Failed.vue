@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
+import { Order } from '@/models/Order';
 
 interface Props {
-    error_message?: string;
+    order: Order;
 }
 
-withDefaults(defineProps<Props>(), {
-    error_message: 'Платеж отклонен системой платежей',
-});
+defineProps<Props>();
 
 const isVisible = ref(false);
 
@@ -45,7 +44,7 @@ onMounted(() => {
                         Детали ошибки:
                     </h2>
                     <p class="text-lg text-red-600 dark:text-red-400 font-semibold break-words">
-                        {{ error_message }}
+                        {{ order.transaction.error_message }}
                     </p>
                 </div>
 

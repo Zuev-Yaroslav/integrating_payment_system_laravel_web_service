@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BillingException;
 use App\Http\Requests\Billing\InitiateRequest;
+use App\Http\Resources\Order\OrderResource;
+use App\Models\Order;
 use App\Services\BillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,10 +64,10 @@ class BillingController extends Controller
     /**
      * Страница ошибки при платеже
      */
-    public function failed(Request $request): Response
+    public function failed(Request $request, string $orderId): Response
     {
         return Inertia::render('Billing/Failed', [
-            'error_message' => $request->query('error', 'Неизвестная ошибка'),
+            'order' => OrderResource::make($this->billingService->failed($orderId))->resolve(),
         ]);
     }
 

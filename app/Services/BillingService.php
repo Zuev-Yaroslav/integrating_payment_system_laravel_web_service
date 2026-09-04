@@ -56,6 +56,15 @@ class BillingService
         ];
     }
 
+    public function failed(string $orderId): Order
+    {
+        return Order::query()
+            ->whereKey($orderId)
+            ->where('user_id', Auth::id())
+            ->whereIN('status', [OrderStatus::FAILED->value, OrderStatus::PENDING->value])
+            ->firstOrFail();
+    }
+
     /**
      * @return array<string, string>
      */

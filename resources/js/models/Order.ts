@@ -1,10 +1,11 @@
-type Order = {
-    id: string;
-    user_id: number;
-    amount: number;
-    currency: string;
-    status: string;
-    description: string;
-    created_at: string;
-    updated_at: string;
+import { Transaction } from '@/models/Transaction';
+
+export type Order = {
+    id: string
+    transaction: Transaction
+    gateway_payment_id: string
+    status: string
+    payment_method: string
+    created_at: string
+
 }

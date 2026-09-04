@@ -13,7 +13,7 @@ const props = defineProps<Props>();
 const checkInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const isChecking = ref(true);
 const errorCount = ref(0);
-const maxErrorRetries = 30; // 60 секунд с интервалом 2 секунды
+const maxErrorRetries = 10; // 20 секунд с интервалом 2 секунды
 
 const checkPaymentStatus = async (orderId: string) => {
     try {

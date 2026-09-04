@@ -14,7 +14,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/billing/initiate', [BillingController::class, 'initiate'])->name('payment.initiate');
     Route::get('/billing/processing/{orderId}', [BillingController::class, 'processing'])->name('billing.processing');
     Route::get('/billing/success/{orderId}', [BillingController::class, 'success'])->name('payment.success');
-    Route::get('/billing/failed', [BillingController::class, 'failed'])->name('payment.failed');
+    Route::get('/billing/failed/{orderId}', [BillingController::class, 'failed'])->name('payment.failed');
 
 });
 
