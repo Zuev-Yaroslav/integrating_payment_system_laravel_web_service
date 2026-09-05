@@ -22,7 +22,7 @@ class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
-            'transaction' => TransactionResource::make($this->transaction)->resolve(),
+            'transactions' => TransactionResource::collection($this->transactions)->resolve(),
             'amount' => $this->amount,
             'currency' => $this->currency,
             'status' => $this->status,

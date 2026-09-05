@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use YooKassa\Model\Payment\PaymentStatus;
 
 /**
  * @property string $id
@@ -48,7 +49,7 @@ class Transaction extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function getErrorMessageAttribute(): string
+    public function getErrorMessageAttribute(): ?string
     {
         if ($this->cancellation_details) {
             $party = $this->cancellation_details['party'];
@@ -57,7 +58,10 @@ class Transaction extends Model
             return "Инициатор: {$party}. Причина: {$reason}.";
         }
 
-        return 'Платеж отклонен системой платежей';
+        if ($this->status === PaymentStatus::CANCELED) {
+            return 'Платеж отклонен системой платежей';
+        }
 
+        return null;
     }
 }

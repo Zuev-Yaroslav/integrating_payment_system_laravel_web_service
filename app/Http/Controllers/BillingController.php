@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class BillingController extends Controller
 {
@@ -32,6 +33,16 @@ class BillingController extends Controller
     }
 
     /**
+     * История заказов и диагностический поток платежных событий.
+     */
+    public function dashboard(): Response
+    {
+        return Inertia::render('Billing/Dashboard', [
+            'orders' => OrderResource::collection($this->billingService->dashboard())->resolve(),
+        ]);
+    }
+
+    /**
      * Инициация оплаты - создает заказ и редирект на YooKassa
      */
     public function initiate(InitiateRequest $request): JsonResponse
@@ -39,6 +50,14 @@ class BillingController extends Controller
         return response()->json([
             'redirect_url' => $this->billingService->initiate($request->validated()['plan_id']),
         ]);
+    }
+
+    /**
+     * Повторная попытка оплаты для существующего заказа.
+     */
+    public function retry(string $orderId): HttpResponse
+    {
+        return Inertia::location($this->billingService->retry($orderId));
     }
 
     /**

@@ -19,8 +19,13 @@ import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Billing',
         href: route('billing.index'),
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Dashboard',
+        href: route('billing.dashboard'),
         icon: LayoutGrid,
     },
 ];
@@ -45,7 +50,7 @@ const footerNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="route('billing.index')">
+                        <Link :href="route('billing.dashboard')">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

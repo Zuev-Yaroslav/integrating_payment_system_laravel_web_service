@@ -2,10 +2,11 @@ import { Transaction } from '@/models/Transaction';
 
 export type Order = {
     id: string
-    transaction: Transaction
-    gateway_payment_id: string
-    status: string
-    payment_method: string
+    user_id: number
+    transactions: Transaction[]
+    amount: number
+    currency: string
+    status: 'pending'|'completed'|'failed'
+    description: string
     created_at: string
-
 }

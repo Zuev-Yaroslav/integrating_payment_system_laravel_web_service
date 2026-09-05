@@ -1,12 +1,13 @@
 export type Transaction = {
     id: string
-    gateway_payment_id: string
-    status: string
-    payment_method: string
-    created_at: string
+    gateway_payment_id: string|null
+    order_id: string
+    status: 'pending' | 'waiting_for_capture' | 'succeeded' | 'canceled'
+    payment_method: string|null
+    created_at: string|null
     cancellation_details: {
         party: string,
         reason: string,
-    },
-    error_message: string
+    }|null,
+    error_message: string|null
 }

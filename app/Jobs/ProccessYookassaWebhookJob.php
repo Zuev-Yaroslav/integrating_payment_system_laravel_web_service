@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Services\PaymentService;
+use App\Services\TransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,7 +26,7 @@ class ProccessYookassaWebhookJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(PaymentService $paymentService): void
+    public function handle(TransactionService $paymentService): void
     {
         $paymentService->callback($this->payload);
     }

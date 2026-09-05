@@ -36,6 +36,26 @@ class BillingService
         }
     }
 
+    public function dashboard()
+    {
+        return Order::query()
+            ->where('user_id', auth()->id())
+            ->with('transactions')
+            ->latest()
+            ->get();
+    }
+
+    public function retry(string $orderId): string
+    {
+        $order = Order::query()
+            ->whereKey($orderId)
+            ->where('user_id', Auth::id())
+            ->whereIn('status', [OrderStatus::PENDING->value, OrderStatus::FAILED->value])
+            ->firstOrFail();
+
+        return $this->orderService->retry($order);
+    }
+
     /**
      * @return array<string, string>
      */
@@ -75,7 +95,7 @@ class BillingService
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
-        $transaction = $order->transaction;
+        $transaction = $order->transactions()->first();
 
         return match ($transaction?->status) {
             PaymentStatus::SUCCEEDED => [

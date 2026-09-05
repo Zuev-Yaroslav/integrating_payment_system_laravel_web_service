@@ -3,7 +3,7 @@
 namespace App\Providers;
 
 use App\Services\OrderService;
-use App\Services\PaymentService;
+use App\Services\TransactionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -18,10 +18,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(OrderService::class, function ($app) {
-            return new OrderService($app->make(PaymentService::class));
+            return new OrderService($app->make(TransactionService::class));
         });
-        $this->app->bind(PaymentService::class, function ($app) {
-            return new PaymentService();
+        $this->app->bind(TransactionService::class, function ($app) {
+            return new TransactionService();
         });
     }
 

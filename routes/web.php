@@ -11,7 +11,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Billing routes
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/billing/dashboard', [BillingController::class, 'dashboard'])->name('billing.dashboard');
     Route::post('/billing/initiate', [BillingController::class, 'initiate'])->name('payment.initiate');
+    Route::post('/billing/retry/{orderId}', [BillingController::class, 'retry'])->name('payment.retry');
     Route::get('/billing/processing/{orderId}', [BillingController::class, 'processing'])->name('billing.processing');
     Route::get('/billing/success/{orderId}', [BillingController::class, 'success'])->name('payment.success');
     Route::get('/billing/failed/{orderId}', [BillingController::class, 'failed'])->name('payment.failed');

@@ -28,7 +28,7 @@ use YooKassa\Model\Payment\PaymentInterface;
 use YooKassa\Model\Payment\PaymentStatus;
 use YooKassa\Request\Payments\CreatePaymentResponse;
 
-class PaymentService
+class TransactionService
 {
     public function callback(array $data): void
     {
