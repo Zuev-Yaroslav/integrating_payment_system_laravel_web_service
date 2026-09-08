@@ -28,7 +28,6 @@ class BillingController extends Controller
 
         return Inertia::render('Billing/Index', [
             'plans' => $this->billingService->plans(),
-//            'error' => $request->query('error'),
         ]);
     }
 

@@ -31,8 +31,6 @@ const sortedOrders = computed(() =>
     ),
 );
 
-const shortOrderId = (id: string): string => `${id.slice(0, 8)}...`;
-
 const formatDate = (value: string | null): string => {
     if (!value) {
         return 'Дата неизвестна';
@@ -102,7 +100,7 @@ const retryPayment = (orderId: string): void => {
                             @click="toggleOrder(order.id)"
                         >
                             <div class="min-w-0">
-                                <p class="truncate font-mono text-sm text-gray-200">Order #{{ shortOrderId(order.id) }}</p>
+                                <p class="truncate font-mono text-sm text-gray-200">Order #{{ order.id }}</p>
                                 <p class="mt-1 text-xs text-gray-500">{{ formatDate(order.created_at) }}</p>
                             </div>
                             <div class="text-right">
@@ -147,10 +145,11 @@ const retryPayment = (orderId: string): void => {
                                     <div
                                         v-for="transaction in order.transactions"
                                         :key="transaction.id"
-                                        class="grid gap-2 py-3 text-xs text-gray-400 sm:grid-cols-[1fr_1fr_1.5fr]"
+                                        class="grid gap-2 py-3 text-xs text-gray-400 sm:grid-cols-[1fr_1fr_1fr_1.5fr]"
                                     >
                                         <span>{{ formatDate(transaction.created_at) }}</span>
                                         <span>Метод: {{ transaction.payment_method || 'Не указан' }}</span>
+                                        <span>Статус: {{ transaction.status }}</span>
                                         <span class="break-all font-mono text-gray-500">
                                             Gateway: {{ transaction.gateway_payment_id || 'ожидает ID' }}
                                         </span>

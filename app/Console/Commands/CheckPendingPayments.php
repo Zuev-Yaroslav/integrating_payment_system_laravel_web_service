@@ -7,7 +7,7 @@ use App\Enums\Yookassa\CancelInitiator;
 use App\Enums\Yookassa\CancelReason;
 use App\Models\Transaction;
 use App\Services\Payments\PaymentGatewayFactory;
-use App\Services\TransactionService;
+use App\Services\Transactions\YooKassaTransactionService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -18,7 +18,7 @@ use YooKassa\Model\Payment\PaymentStatus;
 #[Description('Command description')]
 class CheckPendingPayments extends Command
 {
-    public function __construct(private TransactionService $paymentService)
+    public function __construct(private YooKassaTransactionService $paymentService)
     {
         parent::__construct();
     }

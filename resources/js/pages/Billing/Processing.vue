@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { route } from 'ziggy-js';
+import OrderStatus from '@/enums/OrderStatus';
 
 interface Props {
     orderId?: string;
@@ -20,18 +21,18 @@ const checkPaymentStatus = async (orderId: string) => {
         const response = await axios.get(`/orders/${orderId}/status`);
         const { status, error } = response.data;
 
-        if (status === 'succeeded') {
+        if (status === OrderStatus.COMPLETED) {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
             router.visit('/billing/success/' + encodeURIComponent(orderId));
-        } else if (status === 'canceled') {
+        } else if (status === OrderStatus.FAILED) {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
             router.visit(
                 '/billing/failed?error=' +
                     encodeURIComponent(error || 'Неизвестная ошибка'),
             );
-        } else if (errorCount.value >= maxErrorRetries && status === 'pending') {
+        } else if (errorCount.value >= maxErrorRetries && status === OrderStatus.PENDING) {
             clearInterval(checkInterval.value!);
             router.visit(route('billing.index'), {
                 data: { error: 'Время ожидания оплаты истекло. Если вы закрыли страницу оплаты, попробуйте еще раз.' }

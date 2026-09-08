@@ -9,6 +9,7 @@ interface LogEntry {
     id: string;
     timestamp: string;
     sortTime: number;
+    sortIndex: number,
     message: string;
     type: LogType;
 }
@@ -17,29 +18,28 @@ const props = defineProps<{
     orders: Order[];
 }>();
 
-const formatTime = (value: string | null, fallback: string): string => {
-    if (!value) {
-        return fallback;
-    }
+const formatTime = (value: string): string => {
+    if (!value) return '00.00 00:00:00';
 
     const date = new Date(value);
-    return Number.isNaN(date.getTime())
-        ? fallback
-        : date.toLocaleTimeString('ru-RU', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-          });
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    const time = date.toTimeString().split(' ')[0];
+
+    return `${day}.${month} ${time}`;
 };
 
 const transactionLogs = (order: Order, transaction: Transaction): LogEntry[] => {
-    const timestamp = formatTime(transaction.created_at, formatTime(order.created_at, '--:--:--'));
+    const timestamp = formatTime(transaction.created_at);
     const sortTime = new Date(transaction.created_at ?? order.created_at).getTime();
     const logs: LogEntry[] = [
         {
             id: `${transaction.id}:created`,
             timestamp,
             sortTime,
+            sortIndex: 0,
             message: `Инициализация транзакции по Заказу #${transaction.order_id}. Сгенерирован внутренний ULID: ${transaction.id}`,
             type: 'info',
         },
@@ -50,6 +50,7 @@ const transactionLogs = (order: Order, transaction: Transaction): LogEntry[] => 
             id: `${transaction.id}:gateway`,
             timestamp,
             sortTime,
+            sortIndex: 1,
             message: `Запрос отправлен в API ЮKassa. Получен внешний Gateway ID: ${transaction.gateway_payment_id}. Установлен Идемпотентный ключ.`,
             type: 'info',
         });
@@ -60,6 +61,7 @@ const transactionLogs = (order: Order, transaction: Transaction): LogEntry[] => 
             id: `${transaction.id}:succeeded`,
             timestamp,
             sortTime,
+            sortIndex: 2,
             message:
                 'АСИНХРОННЫЙ ВЕБХУК: Получено событие payment.succeeded. Очередь [ProcessYookassaWebhookJob] запущена. Суммы верифицированы. Заказ переведен в статус COMPLETED.',
             type: 'success',
@@ -71,6 +73,7 @@ const transactionLogs = (order: Order, transaction: Transaction): LogEntry[] => 
             id: `${transaction.id}:canceled`,
             timestamp,
             sortTime,
+            sortIndex: 2,
             message: `СБОЙ ТРАНЗАКЦИИ: Получено событие payment.canceled. Запись в JSON 'cancellation_details' зафиксирована.${transaction.error_message ? ` ${transaction.error_message}` : ''}`,
             type: 'error',
         });
@@ -84,7 +87,7 @@ const logs = computed<LogEntry[]>(() =>
         .flatMap((order) =>
             order.transactions.flatMap((transaction) => transactionLogs(order, transaction)),
         )
-        .sort((first, second) => second.sortTime - first.sortTime),
+        .sort((first, second) => (second.sortTime - first.sortTime) + (second.sortIndex - first.sortIndex)),
 );
 
 const logColor = (type: LogType): string => {

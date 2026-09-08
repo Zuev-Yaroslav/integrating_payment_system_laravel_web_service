@@ -6,12 +6,12 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Transaction;
 use App\Services\Payments\PaymentGatewayFactory;
+use App\Services\Transactions\YooKassaTransactionService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
-    public function __construct(private TransactionService $paymentService) {}
+    public function __construct(private YooKassaTransactionService $paymentService) {}
 
     public function store(array $data): ?string
     {
@@ -25,7 +25,6 @@ class OrderService
             $gateway = PaymentGatewayFactory::make();
 
             $link = $gateway->createPayment($order, $transaction, [
-                'transaction_id' => $transaction->id,
                 'return_url' => route('billing.processing', ['orderId' => $order->id]),
             ]);
 
@@ -49,7 +48,6 @@ class OrderService
             $order->update(['status' => OrderStatus::PENDING->value]);
 
             $link = PaymentGatewayFactory::make()->createPayment($order, $transaction, [
-                'transaction_id' => $transaction->id,
                 'return_url' => route('billing.processing', ['orderId' => $order->id]),
             ]);
 

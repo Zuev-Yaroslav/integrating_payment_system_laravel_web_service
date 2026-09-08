@@ -32,7 +32,7 @@ class BillingService
                 'description' => $plan['name'],
             ]);
         } catch (\Throwable $exception) {
-            throw new BillingException('Не удалось инициировать платеж.', 400);
+            throw new BillingException("Не удалось инициировать платеж: {$exception->getMessage()}", 400);
         }
     }
 
@@ -47,13 +47,18 @@ class BillingService
 
     public function retry(string $orderId): string
     {
-        $order = Order::query()
-            ->whereKey($orderId)
-            ->where('user_id', Auth::id())
-            ->whereIn('status', [OrderStatus::PENDING->value, OrderStatus::FAILED->value])
-            ->firstOrFail();
+        try {
+            $order = Order::query()
+                ->whereKey($orderId)
+                ->where('user_id', Auth::id())
+                ->whereIn('status', [OrderStatus::PENDING->value, OrderStatus::FAILED->value])
+                ->firstOrFail();
 
-        return $this->orderService->retry($order);
+            return $this->orderService->retry($order);
+        } catch (\Throwable $exception) {
+            throw new BillingException("Не удалось повторить платёж платеж: {$exception->getMessage()}", 400);
+        }
+
     }
 
     /**
@@ -95,18 +100,16 @@ class BillingService
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
-        $transaction = $order->transactions()->first();
-
-        return match ($transaction?->status) {
-            PaymentStatus::SUCCEEDED => [
-                'status' => PaymentStatus::SUCCEEDED,
+        return match ($order?->status) {
+            OrderStatus::COMPLETED->value => [
+                'status' => OrderStatus::COMPLETED->value,
                 'order_id' => $order->id,
             ],
-            PaymentStatus::CANCELED => [
-                'status' => PaymentStatus::CANCELED,
+            OrderStatus::FAILED->value => [
+                'status' => OrderStatus::FAILED->value,
                 'error' => $transaction->error_message ?? 'Платеж отклонен',
             ],
-            default => ['status' => PaymentStatus::PENDING],
+            default => ['status' => OrderStatus::PENDING->value],
         };
     }
 
