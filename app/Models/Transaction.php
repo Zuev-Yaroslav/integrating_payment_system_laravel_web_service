@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use YooKassa\Model\Payment\PaymentStatus;
 
 /**
  * @property string $id
@@ -32,6 +32,7 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
+            'status' => TransactionStatus::class,
             'cancellation_details' => 'array',
         ];
     }
@@ -58,7 +59,7 @@ class Transaction extends Model
             return "Инициатор: {$party}. Причина: {$reason}.";
         }
 
-        if ($this->status === PaymentStatus::CANCELED) {
+        if ($this->status === TransactionStatus::CANCELED->value) {
             return 'Платеж отклонен системой платежей';
         }
 

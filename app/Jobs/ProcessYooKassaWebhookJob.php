@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Transaction;
 use App\Services\Transactions\YooKassaTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -9,7 +10,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class ProccessYookassaWebhookJob implements ShouldQueue
+class ProcessYooKassaWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -28,6 +29,10 @@ class ProccessYookassaWebhookJob implements ShouldQueue
      */
     public function handle(YooKassaTransactionService $paymentService): void
     {
-        $paymentService->callback($this->payload);
+        $transaction = Transaction::query()
+            ->with('order')
+            ->findOrFail($this->payload['object']['metadata']['transaction_id']);
+
+        $paymentService->callback($this->payload, $transaction);
     }
 }

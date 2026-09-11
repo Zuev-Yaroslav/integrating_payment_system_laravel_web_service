@@ -3,7 +3,7 @@
 namespace App\Services\Transactions;
 
 use App\Enums\OrderStatus;
-use App\Enums\Yookassa\YooKassaStatus;
+use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +13,6 @@ use YooKassa\Model\Notification\NotificationRefundSucceeded;
 use YooKassa\Model\Notification\NotificationSucceeded;
 use YooKassa\Model\Notification\NotificationWaitingForCapture;
 use YooKassa\Model\Payment\PaymentInterface;
-use YooKassa\Model\Payment\PaymentStatus;
 use YooKassa\Model\Refund\RefundInterface;
 use YooKassa\Model\Refund\RefundStatus;
 
@@ -24,30 +23,30 @@ class YooKassaTransactionService
 
     }
 
-    public function callback(array $data): void
+    public function callback(array $data, Transaction $transaction): void
     {
         $paymentObject = $this->getPaymentObjectByNotification($data)->getObject();
 
         switch ($data['event']) {
             case NotificationEventType::PAYMENT_WAITING_FOR_CAPTURE:
                 $this->ifWaitingForCapture($paymentObject);
-                $this->ifSucceeded($paymentObject);
+                $this->ifSucceeded($paymentObject, $transaction);
                 break;
             case NotificationEventType::PAYMENT_SUCCEEDED:
-                $this->ifSucceeded($paymentObject);
+                $this->ifSucceeded($paymentObject, $transaction);
                 break;
             case NotificationEventType::PAYMENT_CANCELED:
-                $this->ifCancelled($paymentObject);
+                $this->ifCancelled($paymentObject, $transaction);
                 break;
             case NotificationEventType::REFUND_SUCCEEDED:
-                $this->ifRefundSucceeded($paymentObject);
+                $this->ifRefundSucceeded($paymentObject, $transaction);
                 break;
         }
     }
 
     private function getPaymentObjectByNotification(array $payload): NotificationCanceled|NotificationWaitingForCapture|NotificationRefundSucceeded|NotificationSucceeded
     {
-        return match($payload['event']) {
+        return match ($payload['event']) {
             NotificationEventType::PAYMENT_SUCCEEDED => new NotificationSucceeded($payload),
             NotificationEventType::PAYMENT_WAITING_FOR_CAPTURE => new NotificationWaitingForCapture($payload),
             NotificationEventType::PAYMENT_CANCELED => new NotificationCanceled($payload),
@@ -55,55 +54,38 @@ class YooKassaTransactionService
         };
     }
 
-    private function ifRefundSucceeded(RefundInterface $refundObject)
+    private function ifRefundSucceeded(RefundInterface $refundObject, Transaction $transaction): void
     {
         if (isset($refundObject->status) && $refundObject->status === RefundStatus::SUCCEEDED) {
-
-            $metadata = $refundObject->metadata;
-            if (isset($metadata->transaction_id)) {
-                $transaction = Transaction::findOrFail($metadata->transaction_id);
-                $order = $transaction->order;
-                Log::channel('payments')->info("Возврат оформлен успешно. Заказ {$order->id} уже выполнен. Транзакция is refunded");
-                if ($transaction->status !== YookassaStatus::REFUNDED->value) {
-                    $transaction->update([
-                        'status' => YooKassaStatus::REFUNDED->value,
-                    ]);
-                }
-                if ($order->status !== OrderStatus::COMPLETED->value) {
-                    $order->update([
-                        'status' => OrderStatus::COMPLETED->value,
-                    ]);
-                }
+            $order = $transaction->order;
+            Log::channel('payments')->info("Возврат оформлен успешно. Заказ {$order->id} уже выполнен. Транзакция is refunded");
+            if ($transaction->status !== TransactionStatus::REFUNDED->value) {
+                $transaction->update([
+                    'status' => TransactionStatus::REFUNDED->value,
+                ]);
             }
-
         }
     }
 
-    private function ifSucceeded(PaymentInterface $paymentObject): void
+    private function ifSucceeded(PaymentInterface $paymentObject, Transaction $transaction): void
     {
-        if (isset($paymentObject->status) && $paymentObject->status === PaymentStatus::SUCCEEDED)
-        {
-            $metadata = $paymentObject->metadata;
-            if (isset($metadata->transaction_id)) {
-                /** @var Transaction $transaction */
-                $transaction = Transaction::findOrFail($metadata->transaction_id);
-                $order = $transaction->order;
-                if ($order->status === OrderStatus::COMPLETED->value) {
-                    Log::channel('payments')->alert("ДВОЙНАЯ ОПЛАТА: Заказ {$order->id} уже выполнен! Транзакция {$transaction->id} избыточна.");
+        if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::SUCCEEDED->value) {
+            $order = $transaction->order;
+            if ($order->status === OrderStatus::COMPLETED->value) {
+                Log::channel('payments')->alert("ДВОЙНАЯ ОПЛАТА: Заказ {$order->id} уже выполнен! Транзакция {$transaction->id} избыточна.");
+                $this->gateway->refund($transaction);
 
-                    $this->gateway->refund($transaction);
-                    return;
-                }
+                return;
+            }
 
-                if ($paymentObject->paid === true) {
-                    $transaction->update([
-                        'status' => PaymentStatus::SUCCEEDED,
-                        'payment_method' => $paymentObject->payment_method->type,
-                    ]);
-                    $transaction->order()->update([
-                        'status' => OrderStatus::COMPLETED,
-                    ]);
-                }
+            if ($paymentObject->paid === true) {
+                $transaction->update([
+                    'status' => TransactionStatus::SUCCEEDED,
+                    'payment_method' => $paymentObject->payment_method->type,
+                ]);
+                $transaction->order()->update([
+                    'status' => OrderStatus::COMPLETED,
+                ]);
             }
 
         }
@@ -111,26 +93,23 @@ class YooKassaTransactionService
 
     private function ifWaitingForCapture(PaymentInterface &$paymentObject)
     {
-        if (isset($paymentObject->status) && $paymentObject->status === PaymentStatus::WAITING_FOR_CAPTURE) {
+        if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::WAITING_FOR_CAPTURE->value) {
             $paymentObject = $this->gateway->getClient()->capturePayment([
                 'amount' => $paymentObject->amount,
             ], $paymentObject->id, uniqid('', true));
         }
     }
 
-    private function ifCancelled(PaymentInterface $paymentObject)
+    private function ifCancelled(PaymentInterface $paymentObject, Transaction $transaction)
     {
-        if (isset($paymentObject->status) && $paymentObject->status === PaymentStatus::CANCELED) {
-            if (isset($metadata->transaction_id)) {
-                $transaction = Transaction::findOrFail($metadata->transaction_id);
-                $transaction->update([
-                    'status' => PaymentStatus::CANCELED,
-                    'cancellation_details' => $paymentObject->cancellationDetails?->toArray(),
-                ]);
-                $transaction->order()->update([
-                    'status' => OrderStatus::FAILED,
-                ]);
-            }
+        if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::CANCELED->value) {
+            $transaction->update([
+                'status' => TransactionStatus::CANCELED->value,
+                'cancellation_details' => $paymentObject->cancellationDetails?->toArray(),
+            ]);
+            $transaction->order()->update([
+                'status' => OrderStatus::FAILED,
+            ]);
 
         }
     }

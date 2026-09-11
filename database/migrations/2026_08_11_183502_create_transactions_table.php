@@ -1,10 +1,9 @@
 <?php
 
-use App\Enums\OrderStatus;
+use App\Enums\TransactionStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use YooKassa\Model\Payment\PaymentStatus;
 
 return new class extends Migration
 {
@@ -17,8 +16,8 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('order_id')->index()->constrained('orders')->cascadeOnDelete();
             $table->string('gateway_payment_id')->nullable()->unique();
-            $table->string('status')->default(PaymentStatus::PENDING);
-            $table->string('payment_method')->nullable(); // bank_card, sbp, yoomoney
+            $table->string('status')->default(TransactionStatus::PENDING->value);
+            $table->string('payment_method')->nullable();
             $table->text('error_message')->nullable();
             $table->timestamps();
         });
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('payments');
+        Schema::dropIfExists('transactions');
     }
 };

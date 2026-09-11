@@ -18,7 +18,7 @@ class OrderService
         DB::beginTransaction();
         try {
             $data['user_id'] = auth()->id();
-            $order = Order::create($data);
+            $order = Order::create($data)->refresh();
             /** @var Transaction $transaction */
             $transaction = $order->transactions()->create();
 

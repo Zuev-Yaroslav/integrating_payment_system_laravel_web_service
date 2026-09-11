@@ -5,10 +5,8 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Exceptions\BillingException;
 use App\Models\Order;
-use Exception;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
-use YooKassa\Model\Payment\PaymentStatus;
 
 class BillingService
 {
@@ -86,7 +84,7 @@ class BillingService
         return Order::query()
             ->whereKey($orderId)
             ->where('user_id', Auth::id())
-            ->whereIN('status', [OrderStatus::FAILED->value, OrderStatus::PENDING->value])
+            ->whereIn('status', [OrderStatus::FAILED->value, OrderStatus::PENDING->value])
             ->firstOrFail();
     }
 
@@ -100,15 +98,16 @@ class BillingService
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
-        return match ($order?->status) {
+        return match ($order->status) {
             OrderStatus::COMPLETED->value => [
                 'status' => OrderStatus::COMPLETED->value,
                 'order_id' => $order->id,
             ],
             OrderStatus::FAILED->value => [
                 'status' => OrderStatus::FAILED->value,
-                'error' => $transaction->error_message ?? 'Платеж отклонен',
+                'order_id' => $order->id,
             ],
+
             default => ['status' => OrderStatus::PENDING->value],
         };
     }

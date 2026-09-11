@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments\Gateways;
 
+use App\Enums\TransactionStatus;
 use App\Models\Order;
 use App\Models\Transaction;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
@@ -20,8 +21,6 @@ use YooKassa\Common\Exceptions\NotFoundException;
 use YooKassa\Common\Exceptions\ResponseProcessingException;
 use YooKassa\Common\Exceptions\TooManyRequestsException;
 use YooKassa\Common\Exceptions\UnauthorizedException;
-use YooKassa\Model\Payment\PaymentStatus;
-use YooKassa\Request\Payments\CreatePaymentResponse;
 
 class YookassaGateway implements PaymentGatewayInterface
 {
@@ -59,7 +58,7 @@ class YookassaGateway implements PaymentGatewayInterface
         $paymentResponse = $client->createPayment([
             'amount' => [
                 'value' => $order->amount,
-                'currency' => 'RUB',
+                'currency' => $order->currency,
             ],
             'confirmation' => [
                 'type' => 'redirect',
@@ -96,8 +95,10 @@ class YookassaGateway implements PaymentGatewayInterface
                 'payment_id' => $transaction->gateway_payment_id,
             ], Str::ulid());
 
-            if ($response->getStatus() === PaymentStatus::SUCCEEDED) {
-                $transaction->update(['status' => 'refunded']);
+            if ($response->getStatus() === TransactionStatus::SUCCEEDED->value) {
+                $transaction->update([
+                    'status' => TransactionStatus::REFUNDED->value,
+                ]);
                 Log::channel('payments')->info("Деньги по транзакции {$transaction->id} успешно возвращены клиенту.");
                 return true;
             }
@@ -109,8 +110,51 @@ class YookassaGateway implements PaymentGatewayInterface
         }
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ApiException
+     * @throws ResponseProcessingException
+     * @throws BadApiRequestException
+     * @throws ExtensionNotFoundException
+     * @throws InternalServerError
+     * @throws ForbiddenException
+     * @throws TooManyRequestsException
+     * @throws UnauthorizedException
+     */
     public function validateWebhook(Request $request): bool
     {
-        return $request->has('event') && $request->has('object') && $request->has('object.id');
+        if (!$request->has(['event', 'object', 'object.id', 'object.metadata.transaction_id'])) {
+            return false;
+        }
+
+        $yookassaObject = $request->input('object');
+        $localTransactionId = $yookassaObject['metadata']['transaction_id'] ?? null;
+
+        $transaction = Transaction::with('order')
+            ->whereKey($localTransactionId)
+            ->first();
+
+        if (!$transaction) {
+            Log::channel('payments')->warning("Вебхук отклонен: Транзакция {$localTransactionId} не найдена в локальной БД.");
+            return false;
+        }
+
+        $order = $transaction->order;
+
+        $isMetadataValid = (string) $localTransactionId === $transaction->id;
+        $isGatewayIdValid = $yookassaObject['id'] === $transaction->gateway_payment_id;
+
+        $yookassaAmount = number_format((float)$yookassaObject['amount']['value'], 2, '.', '');
+        $localAmount = number_format((float)$order->amount, 2, '.', '');
+        $isAmountValid = $yookassaAmount === $localAmount;
+
+        $isCurrencyValid = $yookassaObject['amount']['currency'] === $order->currency;
+
+        if (!$isMetadataValid || !$isGatewayIdValid || !$isAmountValid || !$isCurrencyValid) {
+            Log::channel('payments')->alert("КРИТИЧЕСКАЯ ОШИБКА (ФРОД): Данные вебхука не сошлись с БД! Заказ: {$order->id}");
+            return false;
+        }
+
+        return true;
     }
 }

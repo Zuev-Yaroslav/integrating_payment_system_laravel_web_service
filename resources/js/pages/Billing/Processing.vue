@@ -19,7 +19,7 @@ const maxErrorRetries = 10; // 20 секунд с интервалом 2 сек�
 const checkPaymentStatus = async (orderId: string) => {
     try {
         const response = await axios.get(`/orders/${orderId}/status`);
-        const { status, error } = response.data;
+        const { status } = response.data;
 
         if (status === OrderStatus.COMPLETED) {
             clearInterval(checkInterval.value!);
@@ -29,8 +29,7 @@ const checkPaymentStatus = async (orderId: string) => {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
             router.visit(
-                '/billing/failed?error=' +
-                    encodeURIComponent(error || 'Неизвестная ошибка'),
+                '/billing/failed/' + encodeURIComponent(orderId),
             );
         } else if (errorCount.value >= maxErrorRetries && status === OrderStatus.PENDING) {
             clearInterval(checkInterval.value!);
@@ -48,10 +47,9 @@ const checkPaymentStatus = async (orderId: string) => {
         if (errorCount.value >= maxErrorRetries) {
             clearInterval(checkInterval.value!);
             isChecking.value = false;
-            router.visit(
-                '/billing/failed?error=' +
-                    encodeURIComponent('Время ожидания истекло'),
-            );
+            router.visit(route('billing.index'), {
+                data: { error: 'Время ожидания истекло.' }
+            });
         }
     }
 };

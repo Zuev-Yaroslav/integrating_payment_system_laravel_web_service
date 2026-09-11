@@ -68,6 +68,18 @@ const transactionLogs = (order: Order, transaction: Transaction): LogEntry[] => 
         });
     }
 
+    if (transaction.status === 'refunded') {
+        logs.push({
+            id: `${transaction.id}:refunded`,
+            timestamp,
+            sortTime,
+            sortIndex: 2,
+            message:
+                'АСИНХРОННЫЙ ВЕБХУК: Получено событие refunded.succeeded. Очередь [ProcessYookassaWebhookJob] запущена. Оформлен полный или частичный возврат средств. Транзакция переведен в статус REFUNDED.',
+            type: 'refunded',
+        });
+    }
+
     if (transaction.status === 'canceled') {
         logs.push({
             id: `${transaction.id}:canceled`,
@@ -115,10 +127,10 @@ const logIcon = (type: LogType): string => {
 };
 
 const messageParts = (message: string): string[] =>
-    message.split(/(COMPLETED|succeeded|ULID|Gateway ID|payment\.canceled)/g);
+    message.split(/(COMPLETED|succeeded|ULID|REFUNDED|Gateway ID|payment\.canceled)/g);
 
 const isKeyword = (part: string): boolean =>
-    /^(COMPLETED|succeeded|ULID|Gateway ID|payment\.canceled)$/.test(part);
+    /^(COMPLETED|succeeded|ULID|REFUNDED|Gateway ID|payment\.canceled)$/.test(part);
 </script>
 
 <template>

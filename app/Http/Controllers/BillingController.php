@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\BillingException;
 use App\Http\Requests\Billing\InitiateRequest;
 use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Order\OrderWithLatestTransactionResource;
 use App\Models\Order;
 use App\Services\BillingService;
 use Illuminate\Http\JsonResponse;
@@ -85,7 +86,7 @@ class BillingController extends Controller
     public function failed(Request $request, string $orderId): Response
     {
         return Inertia::render('Billing/Failed', [
-            'order' => OrderResource::make($this->billingService->failed($orderId))->resolve(),
+            'order' => OrderWithLatestTransactionResource::make($this->billingService->failed($orderId))->resolve(),
         ]);
     }
 

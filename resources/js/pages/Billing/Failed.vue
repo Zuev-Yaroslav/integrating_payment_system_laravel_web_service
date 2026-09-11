@@ -44,7 +44,7 @@ onMounted(() => {
                         Детали ошибки:
                     </h2>
                     <p class="text-lg text-red-600 dark:text-red-400 font-semibold break-words">
-                        {{ order.transaction.error_message }}
+                        {{ order.latest_transaction?.error_message ?? 'Платёж отклонён' }}
                     </p>
                 </div>
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Enums\Yookassa;
+namespace App\Enums;
 
-enum YooKassaStatus: string
+enum TransactionStatus: string
 {
     case PENDING = 'pending';
     case WAITING_FOR_CAPTURE = 'waiting_for_capture';
