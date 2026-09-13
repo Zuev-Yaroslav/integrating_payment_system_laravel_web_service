@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Security\IpAddressChecker;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +34,7 @@ class YookassaIpWhitelist
 //        }
 
         foreach ($this->trustedSubnets as $subnet) {
-            if ($this->ipInSubnet($clientIp, $subnet)) {
+            if (IpAddressChecker::ipInSubnet($clientIp, $subnet)) {
                 return $next($request);
             }
         }
@@ -43,18 +44,5 @@ class YookassaIpWhitelist
         return response()->json(['message' => 'Unauthorized IP'], 403);
     }
 
-    private function ipInSubnet(string $ip, string $subnet): bool
-    {
-        if (str_contains($ip, ':') || str_contains($subnet, ':')) {
-            return false;
-        }
 
-        [$subnetIp, $mask] = explode('/', $subnet);
-
-        $ipLong = ip2long($ip);
-        $subnetLong = ip2long($subnetIp);
-        $maskLong = -1 << (32 - (int)$mask);
-
-        return ($ipLong & $maskLong) === ($subnetLong & $maskLong);
-    }
 }
