@@ -30,7 +30,7 @@ class BillingService
                 'description' => $plan['name'],
             ]);
         } catch (\Throwable $exception) {
-            throw new BillingException("Не удалось инициировать платеж: {$exception->getMessage()}", 400);
+            throw new BillingException("Не удалось инициировать платеж", 400);
         }
     }
 

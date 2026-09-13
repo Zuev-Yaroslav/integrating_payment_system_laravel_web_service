@@ -10,6 +10,6 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/payments/callback', [\App\Http\Controllers\PaymentWebhookController::class, 'callback'])
-    ->middleware(YookassaIpWhitelist::class)
+    ->middleware([YookassaIpWhitelist::class, 'throttle:yookassa-webhook'])
     ->name('payment.callback');
 

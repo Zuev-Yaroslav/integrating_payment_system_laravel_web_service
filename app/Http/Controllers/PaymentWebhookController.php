@@ -20,16 +20,6 @@ class PaymentWebhookController extends Controller
     {
         $payload = $request->all();
 
-        $eventId = $payload['object']['id'] ?? null;
-
-        $lock = Cache::lock("yookassa_event:{$eventId}", 120);
-
-        if (!$lock->get()) {
-            Log::channel('payments')->warning("Контроллер: Повторный вебхук заблокирован. Event ID: {$eventId}");
-
-            return response()->json(['status' => 'duplicate ignored'], 200);
-        }
-
         ProcessYooKassaWebhookJob::dispatch($payload);
 
         return response()->json(['status' => 'success']);
