@@ -15,12 +15,10 @@ class TransactionWebhookEvent extends Model
         'event_type',
         'transaction_id',
         'processing_status',
-        'raw_payload',
         'processed_at',
     ];
 
     protected $casts = [
-        'raw_payload' => 'array',
         'processed_at' => 'datetime',
     ];
 }

@@ -28,41 +28,34 @@ class YooKassaTransactionService
 
     }
 
-    public function callback(array $payload, Transaction $transaction): void
+    public function callback(array $payload, string $transactionId): void
     {
+        $paymentObject = $this->getPaymentObjectByNotification($payload)->getObject();
+
+        $webhookEvent = $this->createWebhookEvent($payload, $transactionId);
+        if (!$webhookEvent) {
+            return;
+        }
         try {
-            DB::beginTransaction();
-
-            $paymentObject = $this->getPaymentObjectByNotification($payload)->getObject();
-
-            $webhookEvent = TransactionWebhookEvent::create([
-                'gateway_payment_id' => $payload['object']['id'],
-                'event_type' => $payload['event'],
-                'transaction_id' => $transaction->id,
-                'raw_payload' => $payload,
-                'processing_status' => WebhookEventStatus::PROCESSING,
-            ]);
-
             switch ($payload['event']) {
                 case NotificationEventType::PAYMENT_WAITING_FOR_CAPTURE:
-                    $this->ifWaitingForCapture($paymentObject);
+                    $this->ifWaitingForCapture($paymentObject, $transactionId);
                     break;
                 case NotificationEventType::PAYMENT_SUCCEEDED:
-                    $this->ifSucceeded($paymentObject, $transaction);
+                    $this->ifSucceeded($paymentObject, $transactionId);
                     break;
                 case NotificationEventType::PAYMENT_CANCELED:
-                    $this->ifCancelled($paymentObject, $transaction);
+                    $this->ifCancelled($paymentObject, $transactionId);
                     break;
                 case NotificationEventType::REFUND_SUCCEEDED:
-                    $this->ifRefundSucceeded($paymentObject, $transaction);
+                    $this->ifRefundSucceeded($paymentObject, $transactionId);
                     break;
                 default:
-                    Log::channel('payments')->warning("Получено необрабатываемое или новое событие от ЮKassa: {$payload['event']}. Транзакция: {$transaction->id}");
+                    Log::channel('payments')->warning("Получено необрабатываемое или новое событие от ЮKassa: {$payload['event']}. Транзакция: {$transactionId}");
                     $webhookEvent->update([
                         'processing_status' => WebhookEventStatus::SKIPPED,
                         'processed_at' => now(),
                     ]);
-                    DB::commit();
                     return;
             }
 
@@ -70,19 +63,11 @@ class YooKassaTransactionService
                 'processing_status' => WebhookEventStatus::PROCESSED,
                 'processed_at' => now(),
             ]);
-            DB::commit();
-
-        } catch (QueryException $exception) {
-            DB::rollBack();
-            if ($exception->getCode() === '23505' || $exception->getCode() === '23000') {
-                Log::channel('payments')->warning(
-                    "Идемпотентность (PostgreSQL/Manual): Дубликат хука заблокирован. ID: {$payload['object']['id']}, Event: {$payload['event']}"
-                );
-                return;
-            }
-            throw $exception;
         } catch (Exception $exception) {
-            DB::rollBack();
+            $webhookEvent->update([
+                'processing_status' => WebhookEventStatus::FAILED,
+                'processed_at' => now(),
+            ]);
             throw $exception;
         }
 
@@ -98,65 +83,118 @@ class YooKassaTransactionService
         };
     }
 
-    private function ifRefundSucceeded(RefundInterface $refundObject, Transaction $transaction): void
+    private function ifRefundSucceeded(RefundInterface $refundObject, string $transactionId): void
     {
-        if (isset($refundObject->status) && $refundObject->status === RefundStatus::SUCCEEDED) {
-            $order = $transaction->order;
-            Log::channel('payments')->info("Возврат оформлен успешно. Заказ {$order->id} уже выполнен. Транзакция is refunded");
-            if ($transaction->status !== TransactionStatus::REFUNDED->value) {
-                $transaction->update([
-                    'status' => TransactionStatus::REFUNDED->value,
-                ]);
+        DB::transaction(function () use ($refundObject, $transactionId) {
+            if (isset($refundObject->status) && $refundObject->status === RefundStatus::SUCCEEDED) {
+                $lockedTransaction = Transaction::query()->lockForUpdate()->findOrFail($transactionId);
+
+                Log::channel('payments')->info("Возврат оформлен успешно. Заказ {$lockedTransaction->order_id} уже выполнен. Транзакция is refunded");
+                if ($lockedTransaction->status !== TransactionStatus::REFUNDED->value) {
+                    $lockedTransaction->update([
+                        'status' => TransactionStatus::REFUNDED->value,
+                    ]);
+                }
             }
-        }
+        });
     }
 
-    private function ifSucceeded(PaymentInterface $paymentObject, Transaction $transaction): void
+    private function ifSucceeded(PaymentInterface $paymentObject, string $transactionId): void
     {
-        if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::SUCCEEDED->value) {
-            $order = $transaction->order()->lockForUpdate()->firstOrFail();
-            if ($order->status === OrderStatus::COMPLETED->value) {
-                Log::channel('payments')->alert("ДВОЙНАЯ ОПЛАТА: Заказ {$order->id} уже выполнен! Транзакция {$transaction->id} избыточна.");
-                DB::afterCommit(function () use ($transaction) {
-                    $this->gateway->refund($transaction);
-                });
+        DB::transaction(function () use ($paymentObject, $transactionId) {
+            if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::SUCCEEDED->value) {
+                $lockedTransaction = Transaction::query()->lockForUpdate()->findOrFail($transactionId);
+                $order = $lockedTransaction->order()->lockForUpdate()->firstOrFail();
 
-                return;
+                if ($lockedTransaction->status === TransactionStatus::SUCCEEDED->value) {
+                    return;
+                }
+
+                if ($order->status === OrderStatus::COMPLETED->value) {
+                    Log::channel('payments')->alert("ДВОЙНАЯ ОПЛАТА: Заказ {$order->id} уже выполнен! Транзакция {$lockedTransaction->id} избыточна.");
+                    DB::afterCommit(function () use ($lockedTransaction) {
+                        $this->gateway->refund($lockedTransaction);
+                    });
+
+                    return;
+                }
+
+                if ($paymentObject->paid === true) {
+                    $lockedTransaction->update([
+                        'status' => TransactionStatus::SUCCEEDED,
+                        'payment_method' => $paymentObject->payment_method->type,
+                    ]);
+                    $order->update([
+                        'status' => OrderStatus::COMPLETED,
+                    ]);
+                }
+
             }
-
-            if ($paymentObject->paid === true) {
-                $transaction->update([
-                    'status' => TransactionStatus::SUCCEEDED,
-                    'payment_method' => $paymentObject->payment_method->type,
-                ]);
-                $transaction->order()->update([
-                    'status' => OrderStatus::COMPLETED,
-                ]);
-            }
-
-        }
+        });
     }
 
-    private function ifWaitingForCapture(PaymentInterface &$paymentObject)
+    private function ifWaitingForCapture(PaymentInterface $paymentObject, string $transactionId): void
     {
+        $idempotenceKey = 'capture_' . $transactionId;
+        $localTransaction = Transaction::query()->find($transactionId);
+
+        if ($localTransaction && $localTransaction->status === TransactionStatus::SUCCEEDED->value) {
+            return;
+        }
+
         if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::WAITING_FOR_CAPTURE->value) {
-            $paymentObject = $this->gateway->getClient()->capturePayment([
+            $this->gateway->getClient()->capturePayment([
                 'amount' => $paymentObject->amount,
-            ], $paymentObject->id, uniqid('', true));
+            ], $paymentObject->id, $idempotenceKey);
         }
     }
 
-    private function ifCancelled(PaymentInterface $paymentObject, Transaction $transaction)
+    private function ifCancelled(PaymentInterface $paymentObject, string $transactionId)
     {
-        if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::CANCELED->value) {
-            $transaction->update([
-                'status' => TransactionStatus::CANCELED->value,
-                'cancellation_details' => $paymentObject->cancellationDetails?->toArray(),
-            ]);
-            $transaction->order()->update([
-                'status' => OrderStatus::FAILED,
-            ]);
+        DB::transaction(function () use ($paymentObject, $transactionId) {
+            if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::CANCELED->value) {
+                $lockedTransaction = Transaction::query()->lockForUpdate()->findOrFail($transactionId);
+                $order = $lockedTransaction->order()->lockForUpdate()->firstOrFail();
 
+                $lockedTransaction->update([
+                    'status' => TransactionStatus::CANCELED->value,
+                    'cancellation_details' => $paymentObject->cancellationDetails?->toArray(),
+                ]);
+                $order->update([
+                    'status' => OrderStatus::FAILED,
+                ]);
+
+            }
+        });
+    }
+
+    private function createWebhookEvent(array $payload, string $transactionId): ?TransactionWebhookEvent
+    {
+        try {
+            DB::beginTransaction();
+
+            /** @var TransactionWebhookEvent $webhookEvent */
+            $webhookEvent = TransactionWebhookEvent::create([
+                'gateway_payment_id' => $payload['object']['id'],
+                'event_type' => $payload['event'],
+                'transaction_id' => $transactionId,
+                'processing_status' => WebhookEventStatus::PROCESSING,
+            ]);
+            DB::commit();
+
+            return $webhookEvent;
+        } catch (QueryException $exception) {
+            DB::rollBack();
+            if ($exception->getCode() === '23505' || $exception->getCode() === '23000') {
+                Log::channel('payments')->warning(
+                    "Идемпотентность (PostgreSQL/Manual): Дубликат хука заблокирован. ID: {$payload['object']['id']}, Event: {$payload['event']}"
+                );
+                return null;
+            }
+            throw $exception;
+        } catch (Exception $exception) {
+            DB::rollBack();
+            throw $exception;
         }
     }
 }

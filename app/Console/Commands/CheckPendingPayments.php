@@ -12,6 +12,7 @@ use App\Services\Transactions\YooKassaTransactionService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 #[Signature('payments:check-pending-payments')]
@@ -37,6 +38,7 @@ class CheckPendingPayments extends Command
                         $yookassaPayment = $gateway->getClient()->getPaymentInfo($transaction->gateway_payment_id);
                         $actualStatus = $yookassaPayment->getStatus();
 
+                        DB::beginTransaction();
                         if ($actualStatus === TransactionStatus::CANCELED->value || $actualStatus === TransactionStatus::SUCCEEDED->value) {
                             $transaction->update([
                                 'status' => $actualStatus,
@@ -63,7 +65,9 @@ class CheckPendingPayments extends Command
 
                             Log::channel('payments')->info("Платеж {$transaction->id} принудительно отменен локально по таймауту Sandbox.");
                         }
+                        DB::commit();
                     } catch (\Exception $e) {
+                        DB::rollBack();
                         Log::channel('payments')->error("Ошибка проверки платежа {$transaction->id}: " . $e->getMessage());
                     }
                 }

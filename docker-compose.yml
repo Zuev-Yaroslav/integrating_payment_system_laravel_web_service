@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginx:latest
+    image: nginx:1.31.6-alpine
     volumes:
       - ./:/var/www/
       - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
@@ -13,7 +13,7 @@ services:
       - payment_network
 
   ngrok:
-    image: ngrok/ngrok:latest
+    image: ngrok/ngrok:3.39.11-alpine
     container_name: payment_system_ngrok
     restart: unless-stopped
     command:
@@ -76,8 +76,32 @@ services:
       - redis_service
     command: [ "/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf" ]
     container_name: payment_system_supervisor_worker
+    user: "www-data:www-data"
     networks:
       - payment_network
+    healthcheck:
+      test: [ "CMD", "supervisorctl", "status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  scheduler:
+    image: php-nodejs
+    restart: always
+    user: "www-data:www-data"
+    volumes:
+      - .:/var/www
+    depends_on:
+      - db
+      - redis_service
+    command: [ "php", "/var/www/artisan", "schedule:work" ]
+    container_name: payment_system_supervisor_scheduler
+    networks:
+      - payment_network
+    healthcheck:
+      test: [ "CMD-SHELL", "ps aux | grep -v grep | grep 'artisan schedule:work' || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   redis_service:
     image: redis:8.10-alpine

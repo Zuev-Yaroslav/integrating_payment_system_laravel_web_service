@@ -28,11 +28,15 @@ RUN apt-get update && apt-get install -y \
       rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY ./_docker/app/php.ini /usr/local/etc/php/conf.d/php.ini
-COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY ./_docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Install composer
-ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+RUN mkdir -p /home/www-data/.npm /home/www-data/.composer && \
+    chown -R www-data:www-data /home/www-data /etc/supervisor /var/www
+
+USER www-data
 
 WORKDIR /var/www
 

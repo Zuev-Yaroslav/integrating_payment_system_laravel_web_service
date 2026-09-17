@@ -23,7 +23,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(OrderService::class, function ($app) {
-            return new OrderService($app->make(YooKassaTransactionService::class));
+            return new OrderService(
+                $app->make(YooKassaTransactionService::class),
+                PaymentGatewayFactory::make(),
+            );
         });
         $this->app->bind(YooKassaTransactionService::class, function ($app) {
             return new YooKassaTransactionService(PaymentGatewayFactory::make());
