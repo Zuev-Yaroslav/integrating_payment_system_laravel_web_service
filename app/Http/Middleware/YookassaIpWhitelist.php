@@ -29,9 +29,9 @@ class YookassaIpWhitelist
     {
         $clientIp = $request->ip();
 
-        if (app()->environment('local')) {
-            return $next($request);
-        }
+//        if (app()->environment('local')) {
+//            return $next($request);
+//        }
 
         foreach ($this->trustedSubnets as $subnet) {
             if (IpAddressChecker::ipInSubnet($clientIp, $subnet)) {
