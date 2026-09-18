@@ -23,6 +23,13 @@ class CallbackRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'event' => ['required', 'string'],
+            'object' => ['required', 'array'],
+            'object.id' => ['required', 'string'],
+            'object.metadata.transaction_id' => ['required', 'string'],
+            'object.amount.value' => ['required', 'numeric'],
+            'object.amount.currency' => ['required', 'string', 'size:3'],
+        ];
     }
 }

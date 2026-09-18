@@ -172,15 +172,46 @@ class YooKassaTransactionService
     {
         try {
             DB::beginTransaction();
-
+            $gatewayPaymentId = $payload['object']['id'];
+            $event = $payload['event'];
             /** @var TransactionWebhookEvent $webhookEvent */
-            $webhookEvent = TransactionWebhookEvent::create([
-                'gateway_payment_id' => $payload['object']['id'],
-                'event_type' => $payload['event'],
-                'transaction_id' => $transactionId,
-                'processing_status' => WebhookEventStatus::PROCESSING,
-            ]);
-            DB::commit();
+            $webhookEvent = TransactionWebhookEvent::query()
+                ->where('gateway_payment_id', $gatewayPaymentId)
+                ->where('event_type', $event)
+                ->lockForUpdate()
+                ->first();
+            if ($webhookEvent) {
+                if ($webhookEvent->processing_status === WebhookEventStatus::PROCESSED->value) {
+                    DB::commit();
+                    Log::channel('payments')->info(
+                        "Идемпотентность: Вебхук ЮKassa уже был успешно обработан. Пропускаем. ID: {$gatewayPaymentId} EVENT: {$event}"
+                    );
+                    return null;
+                }
+                if ($webhookEvent->processing_status === WebhookEventStatus::PROCESSING->value) {
+                    $isLeaseExpired = $webhookEvent->created_at->addMinutes(5)->isPast();
+
+                    if (!$isLeaseExpired) {
+                        DB::rollBack();
+                        throw new Exception("Параллельная обработка события. Запрос холдирован в очереди.");
+                    }
+                    Log::channel('payments')->warning("Обнаружен зависший поток обработки вебхука ID: {$gatewayPaymentId}. Перехватываем управление.");
+                }
+                // Если статус был FAILED или PROCESSING (с истекшим таймаутом),
+                // мы РАЗРЕШАЕМ повторную обработку! Переводим статус обратно в PROCESSING
+                $webhookEvent->update([
+                    'processing_status' => WebhookEventStatus::PROCESSING->value,
+                ]);
+                DB::commit();
+            } else {
+                $webhookEvent = TransactionWebhookEvent::create([
+                    'gateway_payment_id' => $payload['object']['id'],
+                    'event_type' => $payload['event'],
+                    'transaction_id' => $transactionId,
+                    'processing_status' => WebhookEventStatus::PROCESSING,
+                ]);
+                DB::commit();
+            }
 
             return $webhookEvent;
         } catch (QueryException $exception) {
@@ -189,7 +220,6 @@ class YooKassaTransactionService
                 Log::channel('payments')->warning(
                     "Идемпотентность (PostgreSQL/Manual): Дубликат хука заблокирован. ID: {$payload['object']['id']}, Event: {$payload['event']}"
                 );
-                return null;
             }
             throw $exception;
         } catch (Exception $exception) {

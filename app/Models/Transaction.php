@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\TransactionStatus;
+use App\Exceptions\TransactionStateException;
+use App\Models\Traits\HasStateMachine;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @property string $id
@@ -27,7 +30,9 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     /** @use HasFactory<\Database\Factories\TransactionFactory> */
-    use HasFactory, HasUlids;
+    use HasFactory,
+        HasUlids,
+        HasStateMachine;
 
     protected function casts(): array
     {
@@ -64,4 +69,6 @@ class Transaction extends Model
 
         return null;
     }
+
+
 }

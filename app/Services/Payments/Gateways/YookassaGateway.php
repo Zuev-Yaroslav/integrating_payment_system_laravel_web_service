@@ -87,7 +87,7 @@ class YookassaGateway implements PaymentGatewayInterface
             $response = $client->createRefund([
                 'amount' => [
                     'value' => number_format((float)$transaction->order->amount, 2, '.', ''),
-                    'currency' => 'RUB',
+                    'currency' => $transaction->order->currency,
                 ],
                 'metadata' => [
                     'transaction_id' => $transaction->id
@@ -127,8 +127,12 @@ class YookassaGateway implements PaymentGatewayInterface
             return false;
         }
 
+        $event = $request->input('event');
         $yookassaObject = $request->input('object');
         $localTransactionId = $yookassaObject['metadata']['transaction_id'] ?? null;
+        $expectedGatewayPaymentId = ($event === 'refund.succeeded')
+            ? ($yookassaObject['payment_id'] ?? null)
+            : $yookassaObject['id'];
 
         $transaction = Transaction::with('order')
             ->whereKey($localTransactionId)
@@ -142,7 +146,7 @@ class YookassaGateway implements PaymentGatewayInterface
         $order = $transaction->order;
 
         $isMetadataValid = (string) $localTransactionId === $transaction->id;
-        $isGatewayIdValid = $yookassaObject['id'] === $transaction->gateway_payment_id;
+        $isGatewayIdValid = $expectedGatewayPaymentId === $transaction->gateway_payment_id;
 
         $yookassaAmount = number_format((float)$yookassaObject['amount']['value'], 2, '.', '');
         $localAmount = number_format((float)$order->amount, 2, '.', '');

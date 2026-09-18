@@ -9,4 +9,22 @@ enum TransactionStatus: string
     case SUCCEEDED = 'succeeded';
     case CANCELED = 'canceled';
     case REFUNDED = 'refunded';
+
+    public function canTransitionTo(self $newStatus): bool
+    {
+        return match ($this) {
+            self::PENDING => in_array($newStatus, [
+                    self::WAITING_FOR_CAPTURE,
+                    self::SUCCEEDED,
+                    self::CANCELED,
+                    self::REFUNDED,
+                ]),
+            self::WAITING_FOR_CAPTURE => in_array($newStatus, [
+                self::SUCCEEDED,
+                self::CANCELED,
+            ]),
+            self::SUCCEEDED => $newStatus === self::REFUNDED,
+            self::CANCELED, self::REFUNDED => false,
+        };
+    }
 }
