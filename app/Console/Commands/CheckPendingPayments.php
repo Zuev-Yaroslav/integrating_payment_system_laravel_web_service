@@ -40,12 +40,20 @@ class CheckPendingPayments extends Command
             ->chunk(10, function ($pendingTransactions) use ($gateway) {
                 foreach ($pendingTransactions as $transaction) {
 
-                    $yookassaPayment = $gateway->getClient()->getPaymentInfo($transaction->gateway_payment_id);
-                    $actualStatus = $yookassaPayment->getStatus();
-                    $order = $transaction->order;
-                    $refundedAmount = $yookassaPayment->getRefundedAmount();
+                    try {
+                        $this->info("Транзакция {$transaction->id}, шлюз: {$transaction->gateway_payment_id}");
+                        $yookassaPayment = $gateway->getClient()->getPaymentInfo($transaction->gateway_payment_id);
+                        $actualStatus = $yookassaPayment->getStatus();
+                        $order = $transaction->order;
+                        $refundedAmount = $yookassaPayment->getRefundedAmount();
 
-                    $is10MinutesPast = $transaction->created_at->addMinutes(10)->isPast();
+                        $is10MinutesPast = $transaction->created_at->addMinutes(10)->isPast();
+                    } catch (\Exception $exception) {
+                        Log::channel('payments')->error($exception->getMessage());
+
+                        continue;
+                    }
+
                     try {
                         DB::beginTransaction();
                         if (
@@ -67,6 +75,7 @@ class CheckPendingPayments extends Command
                         }
 
                         if ($refundedAmount && (float)$refundedAmount->value > 0) {
+                            Log::channel('payments')->info("Планировщик: По данной транзакции деньги были возвращены. Меняем статус на refunded");
                             $transaction->update([
                                 'status' => TransactionStatus::REFUNDED->value,
                             ]);
