@@ -149,7 +149,7 @@ class YooKassaTransactionService
         }
 
         if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::WAITING_FOR_CAPTURE->value) {
-            CapturePaymentJob::dispatch($paymentObject, $idempotenceKey);
+            CapturePaymentJob::dispatch($paymentObject, $idempotenceKey, $localTransaction);
         }
     }
 
@@ -164,10 +164,11 @@ class YooKassaTransactionService
                     'status' => TransactionStatus::CANCELED->value,
                     'cancellation_details' => $paymentObject->cancellationDetails?->toArray(),
                 ]);
-                $order->update([
-                    'status' => OrderStatus::FAILED,
-                ]);
-
+                if (OrderStatus::from($order->status)->canTransitionTo(OrderStatus::FAILED)) {
+                    $order->update([
+                        'status' => OrderStatus::FAILED,
+                    ]);
+                }
             }
         });
     }

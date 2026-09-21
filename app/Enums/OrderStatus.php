@@ -15,7 +15,10 @@ enum OrderStatus: string
                 self::COMPLETED,
                 self::FAILED,
             ]),
-            self::COMPLETED, self::FAILED => false,
+            self::FAILED => in_array($newStatus, [
+                self::PENDING,
+            ]),
+            self::COMPLETED => false,
         };
     }
 }

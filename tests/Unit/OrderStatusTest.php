@@ -10,10 +10,13 @@ it('allows pending orders to complete or fail', function (OrderStatus $status) {
 ]);
 
 it('does not allow terminal order statuses to transition', function (OrderStatus $from) {
-    expect($from->canTransitionTo(OrderStatus::PENDING))->toBeFalse()
-        ->and($from->canTransitionTo(OrderStatus::COMPLETED))->toBeFalse()
+    expect($from->canTransitionTo(OrderStatus::COMPLETED))->toBeFalse()
         ->and($from->canTransitionTo(OrderStatus::FAILED))->toBeFalse();
 })->with([
     OrderStatus::COMPLETED,
     OrderStatus::FAILED,
 ]);
+
+it('allows failed order to transition to pending', function () {
+    expect(OrderStatus::FAILED->canTransitionTo(OrderStatus::PENDING))->toBeTrue();
+});
