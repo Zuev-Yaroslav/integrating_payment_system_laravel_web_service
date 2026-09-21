@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaction_webhook_events', function (Blueprint $table) {
-            $table->id()->primary();
+            $table->id();
 
             $table->string('gateway_payment_id');
             $table->string('event_type');

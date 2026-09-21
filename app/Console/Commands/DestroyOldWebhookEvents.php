@@ -20,7 +20,7 @@ class DestroyOldWebhookEvents extends Command
 
         TransactionWebhookEvent::query()
             ->where('created_at', '<', now()->subHours(5))
-            ->chunkById(100, function ($transactionWebhookEvents) {
+            ->chunkById(5000, function ($transactionWebhookEvents) {
                 TransactionWebhookEvent::whereIn('id', $transactionWebhookEvents->pluck('id'))->delete();
             });
     }

@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Services\OrderService;
+use App\Services\Payments\Contracts\PaymentGatewayInterface;
+use App\Services\Payments\Gateways\YookassaGateway;
 use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\Transactions\YooKassaTransactionService;
 use Carbon\CarbonImmutable;
@@ -30,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->bind(YooKassaTransactionService::class, function ($app) {
             return new YooKassaTransactionService(PaymentGatewayFactory::make());
+        });
+        $this->app->bind(PaymentGatewayInterface::class, function ($app) {
+            return PaymentGatewayFactory::make();
         });
     }
 

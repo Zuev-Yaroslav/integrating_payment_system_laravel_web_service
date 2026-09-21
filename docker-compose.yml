@@ -62,6 +62,24 @@ services:
     container_name: payment_system_db
     networks:
       - payment_network
+  db_testing:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: ${TESTING_DB_USERNAME}
+      POSTGRES_PASSWORD: ${TESTING_DB_PASSWORD}
+      POSTGRES_DB: ${TESTING_DB_DATABASE}
+    tmpfs:
+      - /var/lib/postgresql/18/docker
+    ports:
+      - "${TESTING_DB_PORT}:${TESTING_DB_PORT}"
+    command:
+      - "postgres"
+      - "-c"
+      - 'port=${TESTING_DB_PORT}'
+    container_name: payment_system_db_testing
+    networks:
+      - payment_network
 
   supervisor_worker:
     image: php-nodejs

@@ -21,6 +21,10 @@ trait HasStateMachine
                     $oldStatus = $enumClass::from($oldStatus);
                 }
 
+                if ($oldStatus === $newStatus) {
+                    return;
+                }
+
                 if (!$oldStatus->canTransitionTo($newStatus)) {
                     $exceptionClass = "App\\Exceptions\\" . ucfirst(class_basename($record)) . "StateException";
                     throw $exceptionClass::invalidTransition($record->id, $oldStatus->value, $newStatus->value);

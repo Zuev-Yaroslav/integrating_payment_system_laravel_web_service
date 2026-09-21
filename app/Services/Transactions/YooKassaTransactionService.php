@@ -5,6 +5,7 @@ namespace App\Services\Transactions;
 use App\Enums\OrderStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\WebhookEventStatus;
+use App\Jobs\CapturePaymentJob;
 use App\Models\Transaction;
 use App\Models\TransactionWebhookEvent;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
@@ -23,17 +24,22 @@ use YooKassa\Model\Refund\RefundStatus;
 
 class YooKassaTransactionService
 {
-    public function __construct(private PaymentGatewayInterface $gateway)
-    {
-
-    }
+    public function __construct(private PaymentGatewayInterface $gateway) {}
 
     public function callback(array $payload, string $transactionId): void
     {
-        $paymentObject = $this->getPaymentObjectByNotification($payload)->getObject();
+        $paymentObject = $this->getPaymentObjectByNotification($payload)?->getObject();
 
         $webhookEvent = $this->createWebhookEvent($payload, $transactionId);
-        if (!$webhookEvent) {
+        if (! $webhookEvent) {
+            return;
+        }
+        if (! $paymentObject) {
+            $webhookEvent->update([
+                'processing_status' => WebhookEventStatus::SKIPPED,
+                'processed_at' => now(),
+            ]);
+
             return;
         }
         try {
@@ -56,6 +62,7 @@ class YooKassaTransactionService
                         'processing_status' => WebhookEventStatus::SKIPPED,
                         'processed_at' => now(),
                     ]);
+
                     return;
             }
 
@@ -73,13 +80,14 @@ class YooKassaTransactionService
 
     }
 
-    private function getPaymentObjectByNotification(array $payload): NotificationCanceled|NotificationWaitingForCapture|NotificationRefundSucceeded|NotificationSucceeded
+    private function getPaymentObjectByNotification(array $payload): NotificationCanceled|NotificationWaitingForCapture|NotificationRefundSucceeded|NotificationSucceeded|null
     {
         return match ($payload['event']) {
             NotificationEventType::PAYMENT_SUCCEEDED => new NotificationSucceeded($payload),
             NotificationEventType::PAYMENT_WAITING_FOR_CAPTURE => new NotificationWaitingForCapture($payload),
             NotificationEventType::PAYMENT_CANCELED => new NotificationCanceled($payload),
             NotificationEventType::REFUND_SUCCEEDED => new NotificationRefundSucceeded($payload),
+            default => null,
         };
     }
 
@@ -90,11 +98,9 @@ class YooKassaTransactionService
                 $lockedTransaction = Transaction::query()->lockForUpdate()->findOrFail($transactionId);
 
                 Log::channel('payments')->info("Возврат оформлен успешно. Заказ {$lockedTransaction->order_id} уже выполнен. Транзакция is refunded");
-                if ($lockedTransaction->status !== TransactionStatus::REFUNDED->value) {
-                    $lockedTransaction->update([
-                        'status' => TransactionStatus::REFUNDED->value,
-                    ]);
-                }
+                $lockedTransaction->update([
+                    'status' => TransactionStatus::REFUNDED->value,
+                ]);
             }
         });
     }
@@ -135,7 +141,7 @@ class YooKassaTransactionService
 
     private function ifWaitingForCapture(PaymentInterface $paymentObject, string $transactionId): void
     {
-        $idempotenceKey = 'capture_' . $transactionId;
+        $idempotenceKey = 'capture_'.$transactionId;
         $localTransaction = Transaction::query()->find($transactionId);
 
         if ($localTransaction && $localTransaction->status === TransactionStatus::SUCCEEDED->value) {
@@ -143,9 +149,7 @@ class YooKassaTransactionService
         }
 
         if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::WAITING_FOR_CAPTURE->value) {
-            $this->gateway->getClient()->capturePayment([
-                'amount' => $paymentObject->amount,
-            ], $paymentObject->id, $idempotenceKey);
+            CapturePaymentJob::dispatch($paymentObject, $idempotenceKey);
         }
     }
 
@@ -186,14 +190,15 @@ class YooKassaTransactionService
                     Log::channel('payments')->info(
                         "Идемпотентность: Вебхук ЮKassa уже был успешно обработан. Пропускаем. ID: {$gatewayPaymentId} EVENT: {$event}"
                     );
+
                     return null;
                 }
                 if ($webhookEvent->processing_status === WebhookEventStatus::PROCESSING->value) {
                     $isLeaseExpired = $webhookEvent->created_at->addMinutes(5)->isPast();
 
-                    if (!$isLeaseExpired) {
+                    if (! $isLeaseExpired) {
                         DB::rollBack();
-                        throw new Exception("Параллельная обработка события. Запрос холдирован в очереди.");
+                        throw new Exception('Параллельная обработка события. Запрос холдирован в очереди.');
                     }
                     Log::channel('payments')->warning("Обнаружен зависший поток обработки вебхука ID: {$gatewayPaymentId}. Перехватываем управление.");
                 }

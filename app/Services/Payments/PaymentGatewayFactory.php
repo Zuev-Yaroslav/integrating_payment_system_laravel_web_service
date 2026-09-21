@@ -13,7 +13,7 @@ class PaymentGatewayFactory
         $driver = config('services.payment_gateway.driver', 'yookassa');
 
         return match ($driver) {
-            'yookassa' => new YookassaGateway(),
+            'yookassa' => app(YookassaGateway::class),
             default => throw new InvalidArgumentException("Платежный драйвер [{$driver}] не поддерживается."),
         };
     }

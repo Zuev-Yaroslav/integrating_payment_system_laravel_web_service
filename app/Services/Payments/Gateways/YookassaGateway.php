@@ -123,10 +123,6 @@ class YookassaGateway implements PaymentGatewayInterface
      */
     public function validateWebhook(Request $request): bool
     {
-        if (!$request->has(['event', 'object', 'object.id', 'object.metadata.transaction_id'])) {
-            return false;
-        }
-
         $event = $request->input('event');
         $yookassaObject = $request->input('object');
         $localTransactionId = $yookassaObject['metadata']['transaction_id'] ?? null;

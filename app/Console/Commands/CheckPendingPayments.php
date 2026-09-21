@@ -17,6 +17,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use YooKassa\Model\Payment\PaymentStatus;
 
 #[Signature('payments:check-pending-payments')]
 #[Description('Command description')]
@@ -57,14 +58,17 @@ class CheckPendingPayments extends Command
                     try {
                         DB::beginTransaction();
                         if (
-                            (($actualStatus === TransactionStatus::CANCELED->value ||
-                                    $actualStatus === TransactionStatus::SUCCEEDED->value) && ((float)$refundedAmount?->value <= 0))
+                            (($actualStatus === PaymentStatus::CANCELED ||
+                                    $actualStatus === PaymentStatus::SUCCEEDED) && ((float)$refundedAmount?->value <= 0))
                         ) {
                             $transaction->update([
                                 'status' => $actualStatus,
                                 'cancellation_details' => $yookassaPayment->cancellationDetails?->toArray(),
                             ]);
-                            if ($order->status === OrderStatus::PENDING->value) {
+                            if (
+                                OrderStatus::from($order->status)->canTransitionTo(OrderStatus::FAILED) ||
+                                OrderStatus::from($order->status)->canTransitionTo(OrderStatus::COMPLETED)
+                            ) {
                                 $order->update([
                                     'status' => $actualStatus === 'succeeded' ? OrderStatus::COMPLETED : OrderStatus::FAILED
                                 ]);
@@ -81,7 +85,7 @@ class CheckPendingPayments extends Command
                             ]);
                         }
 
-                        if ($actualStatus === TransactionStatus::WAITING_FOR_CAPTURE->value && $is10MinutesPast) {
+                        if ($actualStatus === PaymentStatus::WAITING_FOR_CAPTURE && $is10MinutesPast) {
                             Log::channel('payments')->info("Планировщик: Истек таймаут 10 минут для ХОЛДА транзакции {$transaction->id}. Отменяем заморозку средств.");
                             DB::commit();
                             $gateway->getClient()->cancelPayment($transaction->gateway_payment_id, Str::ulid());
@@ -89,7 +93,7 @@ class CheckPendingPayments extends Command
                             continue;
                         }
 
-                        if ($actualStatus === TransactionStatus::PENDING->value && $is10MinutesPast
+                        if ($actualStatus === PaymentStatus::PENDING && $is10MinutesPast
                             && app()->environment('local')
                         ) {
                             $transaction->update([
