@@ -149,7 +149,7 @@ class YooKassaTransactionService
         }
 
         if (isset($paymentObject->status) && $paymentObject->status === TransactionStatus::WAITING_FOR_CAPTURE->value) {
-            CapturePaymentJob::dispatch($paymentObject, $idempotenceKey, $localTransaction);
+            CapturePaymentJob::dispatch($paymentObject, $idempotenceKey);
         }
     }
 
