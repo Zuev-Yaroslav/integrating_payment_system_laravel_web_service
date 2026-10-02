@@ -11,4 +11,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(CheckPendingPayments::class)->everyTenMinutes();
-Schedule::command(DestroyOldWebhookEvents::class)->everySixHours();
+Schedule::command(DestroyOldWebhookEvents::class)->weekly();

@@ -5,6 +5,7 @@ namespace App\Exceptions;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class BillingException extends Exception
 {
@@ -18,7 +19,7 @@ class BillingException extends Exception
      */
     public function report(): void
     {
-        //
+        Log::channel('payments')->critical($this->message, $this->getTrace());
     }
 
     /**
