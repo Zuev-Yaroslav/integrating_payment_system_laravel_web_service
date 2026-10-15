@@ -72,6 +72,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'check_pending_payments' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/check-pending-payments.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

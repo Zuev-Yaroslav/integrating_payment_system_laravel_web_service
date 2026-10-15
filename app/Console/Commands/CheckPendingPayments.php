@@ -50,7 +50,7 @@ class CheckPendingPayments extends Command
 
                         $is10MinutesPast = $transaction->created_at->addMinutes(10)->isPast();
                     } catch (\Exception $exception) {
-                        Log::channel('payments')->error($exception->getMessage());
+                        Log::channel('check_pending_payments')->error($exception->getMessage());
 
                         continue;
                     }
@@ -79,14 +79,14 @@ class CheckPendingPayments extends Command
                         }
 
                         if ($refundedAmount && (float)$refundedAmount->value > 0) {
-                            Log::channel('payments')->info("Планировщик: По данной транзакции деньги были возвращены. Меняем статус на refunded");
+                            Log::channel('check_pending_payments')->info("Планировщик: По данной транзакции деньги были возвращены. Меняем статус на refunded");
                             $transaction->update([
                                 'status' => TransactionStatus::REFUNDED->value,
                             ]);
                         }
 
                         if ($actualStatus === PaymentStatus::WAITING_FOR_CAPTURE && $is10MinutesPast) {
-                            Log::channel('payments')->info("Планировщик: Истек таймаут 10 минут для ХОЛДА транзакции {$transaction->id}. Отменяем заморозку средств.");
+                            Log::channel('check_pending_payments')->info("Планировщик: Истек таймаут 10 минут для ХОЛДА транзакции {$transaction->id}. Отменяем заморозку средств.");
                             DB::commit();
                             $gateway->getClient()->cancelPayment($transaction->gateway_payment_id, Str::ulid());
 
@@ -107,14 +107,14 @@ class CheckPendingPayments extends Command
                                 $order->update(['status' => OrderStatus::FAILED]);
                             }
 
-                            Log::channel('payments')->info("Платеж {$transaction->id} принудительно отменен локально по таймауту Sandbox.");
+                            Log::channel('check_pending_payments')->info("Платеж {$transaction->id} принудительно отменен локально по таймауту Sandbox.");
                             DB::commit();
                             continue;
                         }
                         DB::commit();
                     } catch (TransactionStateException|OrderStateException $e) {
                         DB::rollBack();
-                        Log::channel('payments')->info(
+                        Log::channel('check_pending_payments')->info(
                             "Планировщик: Изменение статуса пропущено для Транзакции {$transaction->id}. " .
                             "Контекст: Вебхук закоммитил данные раньше Крона. Код: {$e->getCode()}. Cообщение: {$e->getMessage()}"
                         );
@@ -123,7 +123,7 @@ class CheckPendingPayments extends Command
 
                     } catch (\Exception $e) {
                         DB::rollBack();
-                        Log::channel('payments')->error("Критическая ошибка проверки платежа {$transaction->id}: " . $e->getMessage());
+                        Log::channel('check_pending_payments')->error("Критическая ошибка проверки платежа {$transaction->id}: " . $e->getMessage());
                         throw $e;
                     }
                 }
