@@ -35,3 +35,4 @@ yarn-error.log
 /tmp
 .npm
 /.bash_history
+.composer
