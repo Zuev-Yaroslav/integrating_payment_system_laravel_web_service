@@ -209,4 +209,6 @@ return [
         Watchers\ScheduleWatcher::class => env('TELESCOPE_SCHEDULE_WATCHER', true),
         Watchers\ViewWatcher::class => env('TELESCOPE_VIEW_WATCHER', true),
     ],
+
+    'allow_access' => env('ALLOW_ACCESS_TO_TELESCOPE', false),
 ];
